@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Hamburger Defender 6.0 - Ghost Mode</title>
+    <style>
+        body {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: #2c3e50;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        h1 { margin: 5px 0; font-size: 20px; color: #f1c40f; text-shadow: 2px 2px #000; }
+        
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            border: 8px solid #8e44ad;
+            border-radius: 4px;
+        }
+
+        canvas {
+            background-color: #e67e22; 
+            display: block;
+        }
+
+        #controls {
+            margin-top: 15px;
+            display: grid;
+            grid-template-columns: 70px 70px 70px;
+            gap: 10px;
+            text-align: center;
+        }
+
+        .btn {
+            background-color: #34495e;
+            border-bottom: 4px solid #1abc9c;
+            border-radius: 8px;
+            color: white;
+            font-size: 24px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+        
+        .btn:active { transform: translateY(4px); border-bottom: 0; }
+        .btn-punch { background-color: #c0392b; border-bottom: 4px solid #e74c3c; grid-column: 2; font-weight: bold; font-size: 16px; }
+
+        #status {
+            background: #000;
+            width: 320px;
+            padding: 5px;
+            text-align: center;
+            font-size: 14px;
+            color: #2ecc71;
+            border-top: 2px solid #555;
+        }
+
+        #instructions {
+            font-size: 12px;
+            color: #bdc3c7;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍔 Caccia all'Hamburger 🍔</h1>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="340" height="340"></canvas>
+        <div id="status">PROTEGGI L'HAMBURGER!</div>
+    </div>
+
+    <div id="instructions">Usa FRECCE per muoverti - SPAZIO per picchiare/ricominciare</div>
+
+    <div id="controls">
+        <div class="btn" onclick="simulateKey('ArrowLeft')">⬅️</div>
+        <div class="btn" onclick="simulateKey('ArrowDown')">⬇️</div>
+        <div class="btn" onclick="simulateKey('ArrowRight')">➡️</div>
+        <div class="btn" style="grid-column: 1;" onclick="simulateKey('ArrowUp')">⬆️</div>
+        <div class="btn btn-punch" onclick="punch()">👊 PUGNO</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+
+        // --- STATO DEL GIOCO ---
+        let gameActive = false; 
+        let gameWon = false;
+        let keys = {};
+        
+        let player = { x: 155, y: 250, w: 24, h: 36, speed: 3.5, dir: 1, isPunching: false };
+        let burger = { x: 155, y: 300, w: 30, h: 25, active: true };
+        
+        let enemies = [
+            { x: 30, y: -40, w: 24, h: 36, speed: 0.8, active: true, stunned: 0, type: 1 },
+            { x: 280, y: -40, w: 24, h: 36, speed: 0.9, active: true, stunned: 0, type: 2 }
+        ];
+
+        let tables = [
+            {x: 60, y: 100}, {x: 240, y: 100},
+            {x: 60, y: 200}, {x: 240, y: 200}
+        ];
+
+        let police = { x: -100, y: 150, visible: false };
+
+        // --- DISEGNO ---
+        function drawHuman(x, y, colorHead, colorBody, colorLegs, isPunching, isEnemy, isStunned) {
+            ctx.save();
+            if(isStunned > 0) {
+                x += Math.random() * 4 - 2;
+                y += Math.random() * 4 - 2;
+            }
+
+            // Testa
+            ctx.fillStyle = colorHead;
+            ctx.fillRect(x + 4, y, 16, 14);
+            
+            // Occhi
+            ctx.fillStyle = "black";
+            if (isEnemy) {
+                ctx.fillRect(x + 6, y + 4, 4, 2);
+                ctx.fillRect(x + 14, y + 4, 4, 2);
+            } else {
+                ctx.fillRect(x + 7, y + 4, 2, 2);
+                ctx.fillRect(x + 15, y + 4, 2, 2);
+            }
+
+            // Corpo
+            ctx.fillStyle = colorBody;
+            ctx.fillRect(x + 2, y + 14, 20, 14);
+
+            // Braccia
+            ctx.fillStyle = colorBody;
+            if (isPunching) {
+                ctx.fillRect(x + 22, y + 14, 12, 6); 
+                ctx.fillStyle = "#ffcccc"; 
+                ctx.fillRect(x + 34, y + 14, 4, 6);
+            } else {
+                ctx.fillRect(x - 2, y + 14, 4, 12); 
+                ctx.fillRect(x + 22, y + 14, 4, 12); 
+            }
+
+            // Gambe
+            ctx.fillStyle = colorLegs;
+            ctx.fillRect(x + 4, y + 28, 6, 8);
+            ctx.fillRect(x + 14, y + 28, 6, 8);
+
+            if (isStunned > 0) {
+                ctx.fillStyle = "yellow";
+                ctx.font = "16px Arial";
+                ctx.fillText("💫", x + 5, y - 5);
+            }
+            ctx.restore();
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = "#d35400"; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = "#e67e22"; 
+            ctx.lineWidth = 1;
+            let tileSize = 40;
+            
+            for(let i=0; i<canvas.width; i+=tileSize) {
+                ctx.beginPath(); ctx.moveTo(i,0); ctx.lineTo(i, canvas.height); ctx.stroke();
+            }
+            for(let i=0; i<canvas.height; i+=tileSize) {
+                ctx.beginPath(); ctx.moveTo(0,i); ctx.lineTo(canvas.width, i); ctx.stroke();
+            }
+
+            ctx.fillStyle = "#2c3e50";
+            ctx.fillRect(120, 0, 100, 20);
+            ctx.fillStyle = "#fff";
+            ctx.font = "10px Arial";
+            ctx.fillText("BENVENUTI", 140, 14);
+
+            tables.forEach(t => {
+                ctx.fillStyle = "white";
+                ctx.beginPath(); ctx.arc(t.x, t.y, 25, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = "#c0392b";
+                ctx.fillRect(t.x-15, t.y-15, 10, 10);
+                ctx.fillRect(t.x+5, t.y-15, 10, 10);
+                ctx.fillRect(t.x-15, t.y+5, 10, 10);
+                ctx.fillRect(t.x+5, t.y+5, 10, 10);
+            });
+        }
+
+        function drawBurger() {
+            if (!burger.active) return;
+            let bx = burger.x; let by = burger.y;
+            
+            ctx.fillStyle = "#f39c12"; ctx.fillRect(bx, by + 15, 30, 10);
+            ctx.fillStyle = "#5d4037"; ctx.fillRect(bx - 2, by + 10, 34, 8);
+            ctx.fillStyle = "#f1c40f"; ctx.beginPath(); ctx.moveTo(bx, by+10); ctx.lineTo(bx+10, by+15); ctx.lineTo(bx+20, by+10); ctx.fill();
+            ctx.fillStyle = "#2ecc71"; ctx.fillRect(bx - 2, by + 6, 34, 4);
+            ctx.fillStyle = "#f39c12"; ctx.beginPath(); ctx.arc(bx + 15, by + 6, 15, Math.PI, 0); ctx.fill();
+            ctx.fillStyle = "#fff"; ctx.fillRect(bx+10, by, 2, 2); ctx.fillRect(bx+20, by+2, 2, 2);
+        }
+
+        function draw() {
+            drawBackground();
+            drawBurger();
+
+            let py = gameWon ? player.y - Math.abs(Math.sin(Date.now()/100)*10) : player.y;
+            drawHuman(player.x, py, "#ffccaa", "#3498db", "#2c3e50", player.isPunching, false, 0);
+
+            enemies.forEach(e => {
+                if (e.active) {
+                    let bodyColor = e.type === 1 ? "#2c3e50" : "#8e44ad"; 
+                    drawHuman(e.x, e.y, "#ffccaa", bodyColor, "#000", false, true, e.stunned);
+                }
+                
+                if (gameWon && e.active) {
+                    ctx.strokeStyle = "#7f8c8d";
+                    ctx.lineWidth = 4;
+                    ctx.beginPath();
+                    for(let i=0; i<=30; i+=8) {
+                        ctx.moveTo(e.x + i, e.y); ctx.lineTo(e.x + i, e.y + 40);
+                    }
+                    ctx.stroke();
+                }
+            });
+
+            if (police.visible) {
+                drawHuman(police.x, police.y, "#ffccaa", "#2980b9", "#2c3e50", false, false, 0);
+                ctx.fillStyle = "#2980b9"; ctx.fillRect(police.x + 2, police.y - 4, 20, 6);
+                ctx.fillStyle = "gold"; ctx.fillRect(police.x + 10, police.y - 6, 4, 4); 
+                
+                if (Math.floor(Date.now() / 200) % 2 === 0) {
+                    ctx.fillStyle = "red"; ctx.beginPath(); ctx.arc(police.x - 10, police.y, 5, 0, Math.PI*2); ctx.fill();
+                } else {
+                    ctx.fillStyle = "blue"; ctx.beginPath(); ctx.arc(police.x + 35, police.y, 5, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        function update() {
+            if (!gameActive) return;
+
+            if (keys['ArrowUp'] && player.y > 60) player.y -= player.speed;
+            if (keys['ArrowDown'] && player.y < canvas.height - player.h) player.y += player.speed;
+            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+            if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += player.speed;
+
+            enemies.forEach(e => {
+                if (e.active && e.stunned <= 0) {
+                    let targetX = burger.x;
+                    let targetY = burger.y;
+                    
+                    if (e.x < targetX) e.x += e.speed;
+                    if (e.x > targetX) e.x -= e.speed;
+                    if (e.y < targetY) e.y += e.speed;
+                    if (e.y > targetY) e.y -= e.speed;
+                } 
+                else if (e.stunned > 0) {
+                    e.stunned--;
+                }
+
+                if (checkCollision(e, burger) && burger.active && e.stunned <= 0) {
+                    gameOver(false);
+                }
+                
+                // NOTA: Ho rimosso la collisione "fisica" tra Eroe e Nemici.
+                // Ora possono sovrapporsi senza che l'eroe rimbalzi indietro.
+            });
+        }
+
+        function checkCollision(r1, r2) {
+            return (r1.x < r2.x + r2.w &&
+                    r1.x + r1.w > r2.x &&
+                    r1.y < r2.y + r2.h &&
+                    r1.y + r2.h > r2.y);
+        }
+
+        function punch() {
+            if (!gameActive) {
+                resetGame();
+                return;
+            }
+
+            if (player.isPunching) return;
+
+            player.isPunching = true;
+            setTimeout(() => player.isPunching = false, 200);
+
+            let hit = false;
+            enemies.forEach(e => {
+                let dx = Math.abs(player.x - e.x);
+                let dy = Math.abs(player.y - e.y);
+                
+                if (dx < 45 && dy < 45) {
+                    e.stunned = 120; 
+                    e.y -= 60; 
+                    if(e.x < 170) e.x -= 30; else e.x += 30;
+                    hit = true;
+                }
+            });
+
+            if (hit) statusEl.innerText = "💥 BOOM! PRESO! 💥";
+            else statusEl.innerText = "Pugno a vuoto!";
+        }
+
+        function gameOver(win) {
+            gameActive = false;
+            if (win) {
+                // Vittoria gestita altrove
+            } else {
+                gameWon = false;
+                burger.active = false;
+                statusEl.innerText = "PRESO DAI CATTIVI! (Premi SPAZIO)";
+                statusEl.style.color = "red";
+            }
+        }
+        
+        setInterval(() => {
+            if (gameActive && checkCollision(player, burger)) {
+                gameWon = true;
+                gameActive = false;
+                burger.active = false; 
+                statusEl.innerText = "🎉 VITTORIA! (Premi SPAZIO) 🎉";
+                statusEl.style.color = "#f1c40f";
+                
+                police.visible = true;
+                police.x = 150;
+                
+                enemies[0].x = 20; enemies[0].y = 150; enemies[0].stunned = 9999;
+                enemies[1].x = 290; enemies[1].y = 150; enemies[1].stunned = 9999;
+            }
+        }, 100);
+
+        function resetGame() {
+            gameActive = true;
+            gameWon = false;
+            police.visible = false;
+            burger.active = true;
+
+            burger.x = Math.random() * (300 - 40) + 40;
+            burger.y = Math.random() * (300 - 150) + 150; 
+
+            let dist = 0;
+            do {
+                player.x = Math.random() * (300 - 40) + 20;
+                player.y = Math.random() * (300 - 100) + 50;
+                
+                let dx = player.x - burger.x;
+                let dy = player.y - burger.y;
+                dist = Math.sqrt(dx*dx + dy*dy);
+                
+            } while (dist < 100); 
+
+            enemies[0].x = 30; enemies[0].y = -30; enemies[0].stunned = 0;
+            enemies[1].x = 280; enemies[1].y = -30; enemies[1].stunned = 0;
+            
+            statusEl.innerText = "CORRI ALL'HAMBURGER!";
+            statusEl.style.color = "#2ecc71";
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+            if (e.code === 'Space' || e.key === 'Enter') punch();
+        });
+        window.addEventListener('keyup', (e) => keys[e.key] = false);
+
+        function simulateKey(key) {
+            keys[key] = true;
+            setTimeout(() => keys[key] = false, 200);
+            if(!gameActive) resetGame();
+        }
+
+        drawBackground();
+        statusEl.innerText = "Premi SPAZIO per Iniziare";
+        gameLoop();
+
+    </script>
+</body>
+</html>

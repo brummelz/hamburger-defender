@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hamburger Defender 6.0 - Ghost Mode</title>
+    <title>Hamburger Defender 7.0 - Solid Obstacles</title>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
@@ -102,7 +102,7 @@
         let gameWon = false;
         let keys = {};
         
-        let player = { x: 155, y: 250, w: 24, h: 36, speed: 3.5, dir: 1, isPunching: false };
+        let player = { x: 155, y: 250, w: 24, h: 36, speed: 3.5, isPunching: false };
         let burger = { x: 155, y: 300, w: 30, h: 25, active: true };
         
         let enemies = [
@@ -110,10 +110,8 @@
             { x: 280, y: -40, w: 24, h: 36, speed: 0.9, active: true, stunned: 0, type: 2 }
         ];
 
-        let tables = [
-            {x: 60, y: 100}, {x: 240, y: 100},
-            {x: 60, y: 200}, {x: 240, y: 200}
-        ];
+        // I tavoli ora sono vuoti all'inizio e generati random
+        let tables = [];
 
         let police = { x: -100, y: 150, visible: false };
 
@@ -190,12 +188,19 @@
 
             tables.forEach(t => {
                 ctx.fillStyle = "white";
-                ctx.beginPath(); ctx.arc(t.x, t.y, 25, 0, Math.PI*2); ctx.fill();
+                // Disegna tavolo come cerchio visivamente
+                ctx.beginPath(); ctx.arc(t.x + t.w/2, t.y + t.h/2, 25, 0, Math.PI*2); ctx.fill();
+                // Tovaglia
+                let cx = t.x + t.w/2;
+                let cy = t.y + t.h/2;
                 ctx.fillStyle = "#c0392b";
-                ctx.fillRect(t.x-15, t.y-15, 10, 10);
-                ctx.fillRect(t.x+5, t.y-15, 10, 10);
-                ctx.fillRect(t.x-15, t.y+5, 10, 10);
-                ctx.fillRect(t.x+5, t.y+5, 10, 10);
+                ctx.fillRect(cx-15, cy-15, 10, 10);
+                ctx.fillRect(cx+5, cy-15, 10, 10);
+                ctx.fillRect(cx-15, cy+5, 10, 10);
+                ctx.fillRect(cx+5, cy+5, 10, 10);
+                
+                // Debug hitbox (opzionale, scommentare per vedere i quadrati di collisione)
+                // ctx.strokeStyle = "yellow"; ctx.strokeRect(t.x, t.y, t.w, t.h);
             });
         }
 
@@ -248,42 +253,102 @@
             }
         }
 
+        // Funzione universale per collisioni tra rettangoli
+        function rectIntersect(r1, r2) {
+            return (r1.x < r2.x + r2.w &&
+                    r1.x + r1.w > r2.x &&
+                    r1.y < r2.y + r2.h &&
+                    r1.y + r2.h > r2.y);
+        }
+
+        // Controlla se una posizione futura è valida (niente muri, niente ostacoli)
+        function canMove(actor, newX, newY, isPlayer) {
+            let tempActor = { x: newX, y: newY, w: actor.w, h: actor.h };
+            
+            // 1. Controllo Muri (Tavoli)
+            for(let t of tables) {
+                if (rectIntersect(tempActor, t)) return false; // Bloccato dal tavolo
+            }
+
+            // 2. Controllo Cattivi (Se sei il player)
+            // L'utente ha chiesto: "non si può passare sopra neanche i cattivi"
+            if (isPlayer) {
+                for(let e of enemies) {
+                    // Se tocchi un cattivo, è un blocco fisico.
+                    // (La morte avviene in una funzione separata, qui controlliamo solo il movimento)
+                    if (e.active && rectIntersect(tempActor, e)) return false; 
+                }
+            }
+
+            // 3. Controllo Player (Se sei un cattivo)
+            // I cattivi non dovrebbero passarci sopra
+            if (!isPlayer && gameActive) {
+                if(rectIntersect(tempActor, player)) return false;
+            }
+
+            return true;
+        }
+
         function update() {
             if (!gameActive) return;
 
-            if (keys['ArrowUp'] && player.y > 60) player.y -= player.speed;
-            if (keys['ArrowDown'] && player.y < canvas.height - player.h) player.y += player.speed;
-            if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
-            if (keys['ArrowRight'] && player.x < canvas.width - player.w) player.x += player.speed;
+            // --- MOVIMENTO GIOCATORE CON COLLISIONI ---
+            let nextX = player.x;
+            let nextY = player.y;
 
+            if (keys['ArrowUp']) nextY -= player.speed;
+            if (keys['ArrowDown']) nextY += player.speed;
+            if (keys['ArrowLeft']) nextX -= player.speed;
+            if (keys['ArrowRight']) nextX += player.speed;
+
+            // Limiti Canvas
+            if (nextX < 0) nextX = 0;
+            if (nextX > canvas.width - player.w) nextX = canvas.width - player.w;
+            if (nextY < 0) nextY = 0; // Lasciamo spazio per l'header
+            if (nextY > canvas.height - player.h) nextY = canvas.height - player.h;
+
+            // Applica movimento solo se non c'è collisione con tavoli o nemici
+            // Proviamo a muovere X
+            if (canMove(player, nextX, player.y, true)) {
+                player.x = nextX;
+            }
+            // Proviamo a muovere Y
+            if (canMove(player, player.x, nextY, true)) {
+                player.y = nextY;
+            }
+
+
+            // --- MOVIMENTO NEMICI CON COLLISIONI ---
             enemies.forEach(e => {
                 if (e.active && e.stunned <= 0) {
-                    let targetX = burger.x;
-                    let targetY = burger.y;
+                    let moveX = 0;
+                    let moveY = 0;
                     
-                    if (e.x < targetX) e.x += e.speed;
-                    if (e.x > targetX) e.x -= e.speed;
-                    if (e.y < targetY) e.y += e.speed;
-                    if (e.y > targetY) e.y -= e.speed;
+                    if (e.x < burger.x) moveX = e.speed;
+                    if (e.x > burger.x) moveX = -e.speed;
+                    if (e.y < burger.y) moveY = e.speed;
+                    if (e.y > burger.y) moveY = -e.speed;
+
+                    // I nemici provano a muoversi. Se sbattono contro un tavolo, si fermano su quell'asse
+                    if (canMove(e, e.x + moveX, e.y, false)) e.x += moveX;
+                    if (canMove(e, e.x, e.y + moveY, false)) e.y += moveY;
+
                 } 
                 else if (e.stunned > 0) {
                     e.stunned--;
                 }
 
-                if (checkCollision(e, burger) && burger.active && e.stunned <= 0) {
+                // Controllo sconfitta (se tocchi un nemico attivo)
+                // Anche se sono solidi, se li tocchi muori
+                if (rectIntersect(player, e) && e.stunned <= 0) {
                     gameOver(false);
                 }
-                
-                // NOTA: Ho rimosso la collisione "fisica" tra Eroe e Nemici.
-                // Ora possono sovrapporsi senza che l'eroe rimbalzi indietro.
-            });
-        }
 
-        function checkCollision(r1, r2) {
-            return (r1.x < r2.x + r2.w &&
-                    r1.x + r1.w > r2.x &&
-                    r1.y < r2.y + r2.h &&
-                    r1.y + r2.h > r2.y);
+                // Nemico mangia hamburger
+                if (rectIntersect(e, burger) && burger.active && e.stunned <= 0) {
+                    gameOver(false);
+                }
+            });
         }
 
         function punch() {
@@ -302,10 +367,11 @@
                 let dx = Math.abs(player.x - e.x);
                 let dy = Math.abs(player.y - e.y);
                 
-                if (dx < 45 && dy < 45) {
+                // Raggio del pugno
+                if (dx < 50 && dy < 50) {
                     e.stunned = 120; 
-                    e.y -= 60; 
-                    if(e.x < 170) e.x -= 30; else e.x += 30;
+                    // Pushback: il pugno li spinge indietro anche se ci sono muri (piccola eccezione per non bloccarli)
+                    e.y -= 40; 
                     hit = true;
                 }
             });
@@ -317,80 +383,14 @@
         function gameOver(win) {
             gameActive = false;
             if (win) {
-                // Vittoria gestita altrove
+                // Vittoria gestita dal loop
             } else {
                 gameWon = false;
                 burger.active = false;
-                statusEl.innerText = "PRESO DAI CATTIVI! (Premi SPAZIO)";
+                statusEl.innerText = "HAI PERSO! (Premi SPAZIO)";
                 statusEl.style.color = "red";
             }
         }
         
         setInterval(() => {
-            if (gameActive && checkCollision(player, burger)) {
-                gameWon = true;
-                gameActive = false;
-                burger.active = false; 
-                statusEl.innerText = "🎉 VITTORIA! (Premi SPAZIO) 🎉";
-                statusEl.style.color = "#f1c40f";
-                
-                police.visible = true;
-                police.x = 150;
-                
-                enemies[0].x = 20; enemies[0].y = 150; enemies[0].stunned = 9999;
-                enemies[1].x = 290; enemies[1].y = 150; enemies[1].stunned = 9999;
-            }
-        }, 100);
-
-        function resetGame() {
-            gameActive = true;
-            gameWon = false;
-            police.visible = false;
-            burger.active = true;
-
-            burger.x = Math.random() * (300 - 40) + 40;
-            burger.y = Math.random() * (300 - 150) + 150; 
-
-            let dist = 0;
-            do {
-                player.x = Math.random() * (300 - 40) + 20;
-                player.y = Math.random() * (300 - 100) + 50;
-                
-                let dx = player.x - burger.x;
-                let dy = player.y - burger.y;
-                dist = Math.sqrt(dx*dx + dy*dy);
-                
-            } while (dist < 100); 
-
-            enemies[0].x = 30; enemies[0].y = -30; enemies[0].stunned = 0;
-            enemies[1].x = 280; enemies[1].y = -30; enemies[1].stunned = 0;
-            
-            statusEl.innerText = "CORRI ALL'HAMBURGER!";
-            statusEl.style.color = "#2ecc71";
-        }
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        window.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-            if (e.code === 'Space' || e.key === 'Enter') punch();
-        });
-        window.addEventListener('keyup', (e) => keys[e.key] = false);
-
-        function simulateKey(key) {
-            keys[key] = true;
-            setTimeout(() => keys[key] = false, 200);
-            if(!gameActive) resetGame();
-        }
-
-        drawBackground();
-        statusEl.innerText = "Premi SPAZIO per Iniziare";
-        gameLoop();
-
-    </script>
-</body>
-</html>
+            if (gameActive && rectIntersect(player

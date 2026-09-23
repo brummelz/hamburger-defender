@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>D&D Solo Simulator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>🐉 D&amp;D Solo Simulator</h1>
+    <p class="subtitle">Dungeon Master: Claude &nbsp;·&nbsp; Illustrator: Gemini</p>
+    <button id="new-campaign">New Campaign</button>
+  </header>
+
+  <main id="app">
+    <div id="scene-panel">
+      <img id="scene-image" alt="Scene illustration" hidden>
+      <div id="scene-placeholder">The illustration for each scene will appear here.</div>
+      <div id="image-spinner" class="spinner" hidden>Painting the scene…</div>
+    </div>
+
+    <div id="chat-panel">
+      <div id="log"></div>
+      <form id="input-form">
+        <input id="player-input" type="text" autocomplete="off" placeholder="What do you do?" disabled>
+        <button id="send-btn" type="submit" disabled>Send</button>
+      </form>
+      <div id="dm-spinner" class="spinner" hidden>The Dungeon Master is thinking…</div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

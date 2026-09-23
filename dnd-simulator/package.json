@@ -1,0 +1,15 @@
+{
+  "name": "dnd-simulator",
+  "version": "1.0.0",
+  "description": "Solo D&D simulator: Claude plays the Dungeon Master, Gemini illustrates each scene.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0"
+  }
+}

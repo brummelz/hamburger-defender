@@ -52,6 +52,13 @@ button{font:inherit;color:inherit}
 .tray.locked .tt{pointer-events:none}
 
 /* hand pointer (hint + demo) */
+/* kid-proofing: input lock during demo, rotate prompt on upright phones */
+#blocker{position:absolute;left:0;top:104px;width:1180px;height:716px;z-index:25;display:none}
+#blocker.on{display:block}
+#rotate{display:none;position:fixed;inset:0;z-index:100;background:var(--scene);align-items:center;justify-content:center;flex-direction:column;gap:24px}
+#rotate svg{width:140px;height:140px;animation:turn 2.4s ease-in-out infinite}
+@keyframes turn{0%,20%{transform:rotate(0)}50%,70%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@media (orientation:portrait) and (max-width:760px){#rotate{display:flex}}
 #hand{position:absolute;width:76px;height:76px;z-index:30;pointer-events:none;opacity:0;transition:left .7s ease-in-out,top .7s ease-in-out,opacity .3s}
 #hand.on{opacity:1}
 #hand.tap svg{animation:tap .35s}
@@ -202,6 +209,8 @@ button{font:inherit;color:inherit}
   </defs>
 </svg>
 
+<div id="rotate" role="alert" aria-label="Please turn the device sideways"><svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="#2A2433" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="6" width="28" height="52" rx="6" fill="#FFFBF4"/><path d="M28 50h8"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" style="width:64px;height:64px;animation:none" fill="none" stroke="#2F6D6A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
+
 <div id="stage">
 
   <!-- shared top bar -->
@@ -211,7 +220,8 @@ button{font:inherit;color:inherit}
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
     </button>
     <div id="stars" role="img" aria-label="0 of 3 stars"></div>
-    <button class="btn" id="soundBtn" aria-label="Sound on">
+    <button class="btn" id="soundBtn" aria-label="Sound on. Grown-ups: press and hold to turn sound off">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
     </button>
   </div>
@@ -310,6 +320,7 @@ button{font:inherit;color:inherit}
     </div>
   </section>
 
+  <div id="blocker" aria-hidden="true"></div>
   <div id="hand" aria-hidden="true"><svg viewBox="0 0 64 64" width="76" height="76"><use href="#handpt"/></svg></div>
 </div>
 
@@ -391,17 +402,21 @@ function armHint() {
 /* screens */
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
 
+function setDemo(on) { S.demo = on; $('#blocker').classList.toggle('on', on); }
+let lastWatch = 0;
+$('#blocker').addEventListener('pointerdown', () => { if (Date.now() - lastWatch > 4000) { lastWatch = Date.now(); say('Watch first. Your turn is next!'); } });
+
 function goHome() {
-  clearTimers(); handHide(); S.demo = false;
+  clearTimers(); handHide(); setDemo(false);
   if ('speechSynthesis' in window) speechSynthesis.cancel();
   S.stars = 0; drawStars(); show('home');
 }
 function startGame(demo) {
   clearTimers(); handHide();
-  S.round = 0; S.stars = 0; S.busy = false; S.demo = !!demo; drawStars();
+  S.round = 0; S.stars = 0; S.busy = false; setDemo(!!demo); drawStars();
   show('play');
   Game.newRound();
-  if (demo) later(() => Game.demo(() => { S.demo = false; handHide(); later(() => { Game.newRound(); }, 600); }), 400);
+  if (demo) later(() => Game.demo(() => { setDemo(false); handHide(); later(() => { Game.newRound(); }, 600); }), 400);
 }
 function roundDone() {
   earnRound(); handHide();
@@ -421,21 +436,22 @@ function winGame() {
 }
 
 /* top bar controls */
-(function holdHome() {
-  const b = $('#homeBtn'); let t;
-  const start = e => { e.preventDefault(); b.classList.add('holding'); t = setTimeout(() => { b.classList.remove('holding'); goHome(); }, 900); };
-  const stop = () => { clearTimeout(t); b.classList.remove('holding'); };
+// press-and-hold buttons: a stray tap from a small hand never quits or mutes
+function holdable(b, onHold, onTap) {
+  let t, held = false;
+  const start = e => { e.preventDefault(); held = false; b.classList.add('holding'); t = setTimeout(() => { held = true; b.classList.remove('holding'); onHold(); }, 900); };
+  const stop = e => { clearTimeout(t); b.classList.remove('holding'); if (e.type === 'pointerup' && !held && onTap) onTap(); held = true; };
   b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
-  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') goHome(); });
-})();
-$('#soundBtn').addEventListener('click', () => {
-  if ($('#home').classList.contains('on')) {
-    S.muted = !S.muted;
-    $('#soundBtn').classList.toggle('muted', S.muted);
-    $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off' : 'Sound on');
-    if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
-  } else Game.prompt();
-});
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHold(); } });
+}
+holdable($('#homeBtn'), goHome);
+function toggleMute() {
+  S.muted = !S.muted;
+  $('#soundBtn').classList.toggle('muted', S.muted);
+  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off. Press and hold to turn sound on' : 'Sound on. Grown-ups: press and hold to turn sound off');
+  if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+}
+holdable($('#soundBtn'), toggleMute, () => { if ($('#home').classList.contains('on')) say($('#story').textContent); else if (!S.demo) Game.prompt(); });
 $('#storyBtn').addEventListener('click', () => say($('#story').textContent));
 $$('.lvl').forEach(b => b.addEventListener('click', () => {
   S.level = +b.dataset.level; sfx.pop(S.level);
@@ -672,7 +688,7 @@ const Game = {
 
   success() {
     const t = this.tile(...this.goal), tu = $('#swimmer'), d = DIR[this.lastDir];
-    this.placeTurtle(this.goal, false, [-d[0], -d[1], 0.5]);   // back off so the clam can be seen
+    this.placeTurtle(this.goal, false, [-d[0], -d[1], 0.72]);   // back off so the clam can be seen
     later(() => t.classList.add('open'), 300);
     tu.classList.remove('joy'); void tu.offsetWidth; tu.classList.add('joy');
     sfx.yes(); say('You found the pearl!');

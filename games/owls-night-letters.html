@@ -1,0 +1,587 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Owl's Night Letters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* ===== Shared PlayPrompt shell: palette ===== */
+:root{
+  --ink:#2A2433; --paper:#FFFBF4; --tray:#F6EEE2; --teal:#2F6D6A; --sun:#E8B33B;
+  --clay:#D9774F; --plum:#6B4A6E; --muted:#4A5463; --line:#E4D9CC;
+  --scene:#2E2A4A;            /* per-game world background */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--scene);touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;color:inherit}
+#stage{position:absolute;left:50%;top:50%;width:1180px;height:820px;transform-origin:center;overflow:hidden;background:var(--scene);border-radius:24px}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.display{font-family:'Baloo 2','Nunito',sans-serif;font-weight:800}
+
+/* top bar */
+#topbar{position:absolute;left:0;top:0;width:1180px;height:104px;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;z-index:20;pointer-events:none}
+#topbar>*{pointer-events:auto}
+.ico{width:32px;height:32px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.btn{position:relative;width:72px;height:72px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn .ring{position:absolute;inset:-9px;width:84px;height:84px;transform:rotate(-90deg);pointer-events:none}
+.btn .ring circle{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;stroke-dasharray:245;stroke-dashoffset:245}
+.btn.holding .ring circle{transition:stroke-dashoffset .9s linear;stroke-dashoffset:0}
+.btn.hidden{visibility:hidden}
+.btn .slash{display:none}
+.btn.muted .slash{display:inline}
+.btn.muted .wave{display:none}
+#stars{display:flex;gap:8px}
+#stars svg{width:46px;height:46px;transition:transform .3s}
+#stars svg.pop{animation:starpop .6s}
+@keyframes starpop{0%{transform:scale(1)}40%{transform:scale(1.5) rotate(15deg)}100%{transform:scale(1)}}
+
+/* tray */
+.tray{position:absolute;left:0;bottom:0;width:1180px;height:150px;background:var(--paper);border-top:3px solid var(--ink);border-radius:36px 36px 0 0;display:flex;align-items:center;justify-content:center;gap:28px;z-index:10}
+.tt{width:100px;height:100px;border-radius:30px;border:3px solid var(--ink);background:var(--tray);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;padding:0;cursor:pointer;transition:transform .08s,outline-color .2s}
+.tt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.sel{outline:5px solid var(--teal);outline-offset:5px}
+.tt.right{background:#CFE6D6;outline:5px solid var(--teal);outline-offset:5px;animation:bounce .5s}
+.tt.wrong{animation:wobble .45s}
+@keyframes wobble{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}
+.tray.locked .tt{pointer-events:none}
+
+/* hand pointer (hint + demo) */
+#hand{position:absolute;width:76px;height:76px;z-index:30;pointer-events:none;opacity:0;transition:left .7s ease-in-out,top .7s ease-in-out,opacity .3s}
+#hand.on{opacity:1}
+#hand.tap svg{animation:tap .35s}
+#hand.nudge svg{animation:nudge 1s infinite}
+@keyframes tap{50%{transform:scale(.82) translateY(6px)}}
+@keyframes nudge{50%{transform:translateY(-14px)}}
+
+/* ===== Home (start) screen ===== */
+#home{background:var(--scene)}
+.home-main{position:absolute;left:0;top:104px;width:1180px;height:566px;padding:28px 40px 24px;display:grid;grid-template-columns:480px minmax(0,1fr);gap:40px}
+.hero{position:relative;border-radius:32px;overflow:hidden;border:3px solid var(--ink);height:100%}
+.hero svg{display:block;width:100%;height:100%}
+.home-copy{display:flex;flex-direction:column;gap:18px;min-width:0}
+.lbl{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.home-copy h1{margin:0;font-size:52px;line-height:1.02}
+.speak{display:flex;align-items:center;gap:14px}
+.speak button{flex:none;width:56px;height:56px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 3px 0 var(--ink)}
+.speak p{margin:0;font-size:21px;line-height:1.35;font-weight:700;color:#3A3346}
+.steps{display:flex;gap:14px}
+.step{flex:1;min-width:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.sn{position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:15px}
+.gest{width:80px;height:80px;border-radius:50%;background:var(--tray);display:grid;place-items:center}
+.gest svg{width:46px;height:46px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.step b{font-size:15px;font-weight:800;text-align:center;line-height:1.2}
+.grownup{margin-top:auto;background:var(--paper);border:2px dashed #B9AC9C;border-radius:16px;padding:12px 18px;display:flex;flex-direction:column;gap:4px}
+.grownup .row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.grownup .row span:last-child{font-size:15px;font-weight:700;color:#3A3346}
+.grownup .tip{font-size:14px;color:var(--muted);font-weight:600}
+.home-tray{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:0 60px;gap:0}
+.demo-btn{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.play-btn{width:120px;height:120px;border-radius:50%;border:3px solid var(--ink);background:var(--teal);display:grid;place-items:center;margin-top:-44px;box-shadow:0 6px 0 var(--ink);cursor:pointer;padding:0;animation:breathe 2.4s ease-in-out infinite}
+.play-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+@keyframes breathe{50%{transform:scale(1.06)}}
+.lvl{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:flex;align-items:center;justify-content:center;gap:6px;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.lvl span{width:16px;height:16px;border-radius:50%;background:var(--ink)}
+.lvl[aria-pressed="true"]{outline:5px solid var(--teal);outline-offset:5px;background:#CFE6D6}
+.side{display:flex;align-items:center;gap:12px}
+.side.r{justify-content:flex-end}
+.wave{transform-box:fill-box;transform-origin:50% 90%;animation:wave 2.2s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-5deg) translateY(-6px)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg) translateY(-4px)}}
+.floaty{animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-8px)}}
+
+/* ===== Win screen ===== */
+#win{background:rgba(42,36,51,.55);z-index:40}
+.win-card{position:absolute;left:50%;top:50%;width:640px;transform:translate(-50%,-50%);background:var(--paper);border:3px solid var(--ink);border-radius:40px;box-shadow:0 8px 0 var(--ink);padding:36px 40px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.win-card h2{margin:0;font-size:56px;line-height:1}
+.win-stars{display:flex;gap:14px}
+.win-stars svg{width:96px;height:96px;opacity:0;transform:scale(.3)}
+#win.on .win-stars svg{animation:winstar .5s forwards}
+#win.on .win-stars svg:nth-child(2){animation-delay:.25s}
+#win.on .win-stars svg:nth-child(3){animation-delay:.5s}
+@keyframes winstar{to{opacity:1;transform:scale(1)}}
+.win-row{display:flex;gap:28px;align-items:center}
+.confetti{position:absolute;width:14px;height:14px;border-radius:3px;border:2px solid var(--ink);top:-20px;animation:fall linear forwards;z-index:41}
+@keyframes fall{to{transform:translateY(880px) rotate(540deg)}}
+
+/* ===== Game-specific: Owl's Night Letters ===== */
+/* home copy sits on the dark night scene: light text, cards stay on paper */
+#home .home-copy>.lbl{color:#C9C0E6}
+#home .home-copy h1{color:#FFFBF4}
+#home .speak p{color:#E9E3F7}
+#home .speak button{box-shadow:0 3px 0 #1C1930}
+.hero{border-color:#1C1930}
+.owl{transform-box:fill-box;transform-origin:50% 100%}
+.owl.happy{animation:hop .5s 3}
+@keyframes hop{50%{transform:translateY(-34px)}}
+.owl.think{animation:think 1s}
+@keyframes think{25%{transform:rotate(-5deg)}75%{transform:rotate(5deg)}}
+.st{position:absolute;width:7px;height:7px;border-radius:50%;background:#F7E6B5;animation:twinkle 3s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.35;transform:scale(.7)}}
+.twk{animation:twinkle 3s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.fly{position:absolute;width:14px;height:14px;border-radius:50%;background:#E8B33B;box-shadow:0 0 0 8px rgba(232,179,59,.22),0 0 0 18px rgba(232,179,59,.08);z-index:2;pointer-events:none;transition:left 1s ease-in-out,top 1s ease-in-out,box-shadow .3s;animation:drift 4s ease-in-out infinite}
+.fly.swirl{transition:left .26s linear,top .26s linear,box-shadow .3s}
+.fly.bright{background:#FFE08A;box-shadow:0 0 0 10px rgba(255,224,138,.4),0 0 0 26px rgba(232,179,59,.16)}
+@keyframes drift{25%{transform:translate(6px,-8px)}50%{transform:translate(-4px,-14px)}75%{transform:translate(-8px,-4px)}}
+.glow{transform-box:fill-box;transform-origin:center;opacity:.1;transition:opacity .4s}
+.glow.pulse{animation:moonpulse 1.4s ease-out}
+@keyframes moonpulse{0%{opacity:.1;transform:scale(1)}35%{opacity:.32;transform:scale(1.3)}100%{opacity:.1;transform:scale(1)}}
+#pic{position:absolute;left:578px;top:374px;width:150px;height:150px;border-radius:32px;border:3px solid #1C1930;background:var(--paper);box-shadow:0 5px 0 #1C1930;padding:0;cursor:pointer;display:grid;place-items:center;z-index:3}
+#pic svg{width:116px;height:116px}
+#pic.pop{animation:picpop .45s}
+@keyframes picpop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.08)}100%{transform:scale(1);opacity:1}}
+#slot{position:absolute;left:755px;top:394px;width:110px;height:110px;border-radius:30px;border:5px dashed #F7E6B5;background:rgba(247,230,181,.1);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:72px;line-height:1;color:var(--ink);z-index:3;transition:background .3s,border-color .3s}
+#slot.filled{background:var(--paper);border-style:solid;border-color:#E8B33B;box-shadow:0 0 0 10px rgba(247,230,181,.25),0 0 40px 12px rgba(232,179,59,.35)}
+#word{position:absolute;left:520px;top:540px;width:400px;text-align:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:54px;line-height:1;color:#F7E6B5;opacity:0;transform:translateY(10px);transition:opacity .35s,transform .35s;z-index:3;pointer-events:none}
+#word.on{opacity:1;transform:none}
+#word b{color:#E8B33B;font-weight:800}
+.let{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:60px;line-height:1;color:var(--ink)}
+.tt.let.dim{opacity:.35;box-shadow:0 2px 0 var(--ink)}
+.flyL{position:absolute;width:100px;height:100px;border-radius:30px;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;z-index:25;pointer-events:none;transition:left .7s cubic-bezier(.4,0,.3,1),top .7s cubic-bezier(.3,-.4,.5,1),transform .7s}
+</style>
+</head>
+<body>
+
+<!-- Reusable drawings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke="#2A2433" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="handpt" viewBox="0 0 64 64"><path d="M26 34V12a5 5 0 0 1 10 0v16l12 3a6 6 0 0 1 4.5 7l-2.5 13a8 8 0 0 1-8 6.5H31a8 8 0 0 1-6.4-3.2L15 44a5 5 0 0 1 7-7z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="owl" viewBox="0 0 220 260">
+      <g stroke="#1C1930" stroke-width="3" stroke-linejoin="round">
+        <path d="M40 66 L52 14 L84 50 Z" fill="#9D84B7"/>
+        <path d="M180 66 L168 14 L136 50 Z" fill="#9D84B7"/>
+        <ellipse cx="110" cy="142" rx="86" ry="104" fill="#B9A3CF"/>
+        <ellipse cx="26" cy="160" rx="20" ry="52" fill="#9D84B7"/>
+        <ellipse cx="194" cy="160" rx="20" ry="52" fill="#9D84B7"/>
+        <ellipse cx="110" cy="180" rx="52" ry="60" fill="#F6EEE2"/>
+      </g>
+      <path d="M86 168 q6 6 12 0 M110 168 q6 6 12 0 M98 190 q6 6 12 0 M122 190 q6 6 12 0 M86 212 q6 6 12 0 M110 212 q6 6 12 0" fill="none" stroke="#B9A3CF" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="76" cy="94" r="32" fill="#F6EEE2" stroke="#1C1930" stroke-width="3"/><circle cx="144" cy="94" r="32" fill="#F6EEE2" stroke="#1C1930" stroke-width="3"/>
+      <circle cx="80" cy="96" r="17" fill="#E8B33B"/><circle cx="140" cy="96" r="17" fill="#E8B33B"/>
+      <circle cx="82" cy="96" r="9" fill="#1C1930"/><circle cx="138" cy="96" r="9" fill="#1C1930"/>
+      <path d="M100 120 L120 120 L110 140 Z" fill="#D9774F" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="56" cy="128" r="8" fill="#E98C8C" opacity=".8"/><circle cx="164" cy="128" r="8" fill="#E98C8C" opacity=".8"/>
+      <path d="M84 244 v10 M96 244 v10 M124 244 v10 M136 244 v10" stroke="#D9774F" stroke-width="7" stroke-linecap="round"/>
+    </symbol>
+    <!-- object pictures, 100x100, outlined flat style -->
+    <symbol id="p-moon" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linejoin="round"><path d="M60 12 A39 39 0 1 0 88 70 A34 34 0 0 1 60 12 Z" fill="#E8B33B"/><circle cx="34" cy="62" r="5" fill="#D29A26" stroke="none"/><circle cx="46" cy="78" r="3.5" fill="#D29A26" stroke="none"/><circle cx="28" cy="42" r="3" fill="#D29A26" stroke="none"/></g></symbol>
+    <symbol id="p-sun" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linecap="round" fill="none"><path d="M50 7v12M50 81v12M7 50h12M81 50h12M19 19l9 9M81 19l-9 9M19 81l9-9M81 81l-9-9"/></g><circle cx="50" cy="50" r="23" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/><circle cx="42" cy="46" r="3" fill="#2A2433"/><circle cx="58" cy="46" r="3" fill="#2A2433"/><path d="M41 56q9 8 18 0" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="p-ball" viewBox="0 0 100 100"><circle cx="50" cy="52" r="36" fill="#7FA6C4" stroke="#2A2433" stroke-width="3"/><path d="M50 16 C 30 34 30 70 50 88 C 70 70 70 34 50 16 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/><path d="M14 52 Q50 64 86 52" fill="none" stroke="#2A2433" stroke-width="3"/><ellipse cx="34" cy="34" rx="5" ry="8" fill="#FFFBF4" opacity=".7" transform="rotate(35 34 34)"/></symbol>
+    <symbol id="p-tree" viewBox="0 0 100 100"><rect x="43" y="56" width="14" height="36" rx="4" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/><circle cx="50" cy="40" r="30" fill="#6E9773" stroke="#2A2433" stroke-width="3"/><path d="M36 34q4-6 10-6M58 50q5-2 8-8" fill="none" stroke="#4F7A57" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="p-fish" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linejoin="round"><path d="M68 50 L94 30 L94 70 Z" fill="#D9774F"/><path d="M44 30 Q52 16 62 30 Z" fill="#D9774F"/><ellipse cx="44" cy="52" rx="34" ry="22" fill="#7FA6C4"/></g><circle cx="26" cy="46" r="4" fill="#2A2433"/><path d="M44 40q8 12 0 24M54 40q8 12 0 24" fill="none" stroke="#5E87A6" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="p-hat" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linejoin="round"><ellipse cx="50" cy="74" rx="42" ry="11" fill="#6B4A6E"/><path d="M28 74 V28 Q28 20 36 20 H64 Q72 20 72 28 V74 Z" fill="#6B4A6E"/><rect x="28" y="56" width="44" height="11" fill="#D9774F"/></g></symbol>
+    <symbol id="p-cup" viewBox="0 0 100 100"><path d="M70 44 Q88 44 88 57 Q88 70 70 68" fill="none" stroke="#2A2433" stroke-width="11" stroke-linecap="round"/><path d="M70 44 Q88 44 88 57 Q88 70 70 68" fill="none" stroke="#7FA6C4" stroke-width="5" stroke-linecap="round"/><path d="M20 36 H72 V70 Q72 86 56 86 H36 Q20 86 20 70 Z" fill="#7FA6C4" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/><path d="M38 28q-5-6 0-12t0-12M54 28q-5-6 0-12t0-12" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/><path d="M20 48 H72" stroke="#2A2433" stroke-width="3"/></symbol>
+    <symbol id="p-kite" viewBox="0 0 100 100"><path d="M52 74 Q38 82 50 88 Q62 94 52 99" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/><path d="M44 82 l-8 -4 0 9z M58 91 l8 -4 0 9z" fill="#E8B33B" stroke="#2A2433" stroke-width="2.4" stroke-linejoin="round"/><path d="M52 4 L80 36 L52 74 L24 36 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/><path d="M52 4 L52 74 M24 36 H80" stroke="#2A2433" stroke-width="2.4"/><path d="M52 4 L80 36 L52 36 Z M52 36 L24 36 L52 74 Z" fill="#E8B33B" stroke="#2A2433" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+    <symbol id="p-pig" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linejoin="round"><path d="M24 36 L18 10 L44 22 Z" fill="#E99A9A"/><path d="M76 36 L82 10 L56 22 Z" fill="#E99A9A"/><circle cx="50" cy="54" r="36" fill="#F4B8B8"/><ellipse cx="50" cy="66" rx="16" ry="11" fill="#E99A9A"/></g><circle cx="44" cy="66" r="3" fill="#2A2433"/><circle cx="56" cy="66" r="3" fill="#2A2433"/><circle cx="36" cy="46" r="4" fill="#2A2433"/><circle cx="64" cy="46" r="4" fill="#2A2433"/></symbol>
+    <symbol id="p-duck" viewBox="0 0 100 100"><g stroke="#2A2433" stroke-width="3" stroke-linejoin="round"><path d="M78 58 L95 46 L90 70 Z" fill="#E8B33B"/><ellipse cx="54" cy="66" rx="34" ry="21" fill="#E8B33B"/><path d="M22 34 L5 39 L22 45 Z" fill="#D9774F"/><circle cx="36" cy="36" r="17" fill="#E8B33B"/><path d="M48 64 Q64 52 78 64 Q64 76 48 64 Z" fill="#D29A26"/></g><circle cx="33" cy="32" r="3.4" fill="#2A2433"/></symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+
+  <!-- shared top bar -->
+  <div id="topbar">
+    <button class="btn hidden" id="homeBtn" aria-label="Home, press and hold">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+    </button>
+    <div id="stars" role="img" aria-label="0 of 3 stars"></div>
+    <button class="btn" id="soundBtn" aria-label="Sound on">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
+    </button>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <section id="home" class="screen on" aria-label="Start screen">
+    <div class="home-main">
+      <div class="hero">
+        <svg viewBox="0 0 480 514" aria-hidden="true">
+          <rect width="480" height="514" fill="#2E2A4A"/>
+          <g fill="#F7E6B5"><circle class="twk" cx="40" cy="60" r="3.5"/><circle class="twk" cx="150" cy="34" r="3.5" style="animation-delay:.8s"/><circle class="twk" cx="230" cy="90" r="3.5" style="animation-delay:1.6s"/><circle class="twk" cx="440" cy="230" r="3.5" style="animation-delay:.4s"/><circle class="twk" cx="300" cy="230" r="3.5" style="animation-delay:2.2s"/><circle class="twk" cx="30" cy="210" r="3.5" style="animation-delay:1.2s"/></g>
+          <circle cx="370" cy="112" r="96" fill="#F7E6B5" opacity=".12"/>
+          <circle cx="370" cy="112" r="66" fill="#F7E6B5" stroke="#1C1930" stroke-width="3"/>
+          <circle cx="346" cy="92" r="12" fill="#EBD594"/><circle cx="392" cy="128" r="17" fill="#EBD594"/><circle cx="388" cy="84" r="7" fill="#EBD594"/>
+          <path d="M-20 420 C 120 320 300 320 420 420 Z" fill="#3E3966" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M200 440 C 340 350 460 350 520 440 Z" fill="#48427A" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M-10 430 Q 240 410 490 430 V520 H-10 Z" fill="#2A2648" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M-20 360 H320 Q 340 375 320 390 H-20 Z" fill="#7A5A52" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M250 366 L 320 330" stroke="#1C1930" stroke-width="20" stroke-linecap="round"/>
+          <path d="M250 366 L 320 330" stroke="#7A5A52" stroke-width="13" stroke-linecap="round"/>
+          <ellipse cx="332" cy="318" rx="24" ry="14" fill="#6E9773" stroke="#1C1930" stroke-width="3" transform="rotate(-30 332 318)"/>
+          <g transform="translate(50,106)">
+            <g class="wave"><ellipse cx="200" cy="80" rx="19" ry="50" fill="#9D84B7" stroke="#1C1930" stroke-width="3" transform="rotate(35 200 80)"/></g>
+            <use href="#owl" width="220" height="260"/>
+          </g>
+          <g class="floaty">
+            <rect x="370" y="420" width="76" height="76" rx="22" fill="#FFFBF4" stroke="#1C1930" stroke-width="3"/>
+            <text x="408" y="478" text-anchor="middle" font-family="'Baloo 2',sans-serif" font-weight="800" font-size="54" fill="#2A2433">M</text>
+          </g>
+          <g fill="#E8B33B">
+            <g class="twk"><circle cx="300" cy="250" r="22" opacity=".08"/><circle cx="300" cy="250" r="13" opacity=".22"/><circle cx="300" cy="250" r="6"/></g>
+            <g class="twk" style="animation-delay:1s"><circle cx="420" cy="300" r="22" opacity=".08"/><circle cx="420" cy="300" r="13" opacity=".22"/><circle cx="420" cy="300" r="6"/></g>
+            <g class="twk" style="animation-delay:2s"><circle cx="60" cy="300" r="22" opacity=".08"/><circle cx="60" cy="300" r="13" opacity=".22"/><circle cx="60" cy="300" r="6"/></g>
+            <g class="twk" style="animation-delay:1.5s"><circle cx="190" cy="460" r="22" opacity=".08"/><circle cx="190" cy="460" r="13" opacity=".22"/><circle cx="190" cy="460" r="6"/></g>
+            <g class="twk" style="animation-delay:.5s"><circle cx="90" cy="60" r="22" opacity=".08"/><circle cx="90" cy="60" r="13" opacity=".22"/><circle cx="90" cy="60" r="6"/></g>
+          </g>
+        </svg>
+      </div>
+      <div class="home-copy">
+        <span class="lbl">First sounds · letters</span>
+        <h1 class="display">Owl's Night Letters</h1>
+        <div class="speak">
+          <button id="storyBtn" aria-label="Hear the story"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <p id="story">Owl is lighting up the night with letters. Listen to each word and find the letter it starts with!</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span><b>Listen to Owl say the word</b></div>
+          <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><path d="M8 16V8.5l4 4.5 4-4.5V16"/></svg></span><b>Find its first sound</b></div>
+          <div class="step"><span class="sn">3</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="10" y="3" width="11" height="11" rx="3" stroke-dasharray="2.6 2.6"/><path d="M3 21l9-9"/><path d="M7.5 12H12v4.5"/></svg></span><b>Tap the letter to light it up</b></div>
+        </div>
+        <div class="grownup">
+          <div class="row"><span class="lbl" style="font-size:11px">Grown-up</span><span>Hearing the first sound in a word and matching it to a letter · about 3 min · 5 rounds</span></div>
+          <span class="tip">Stretch the first sound together: “mmm-oon”. Use the letter’s sound (“mmm”), not its name (“em”).</span>
+        </div>
+      </div>
+    </div>
+    <div class="tray home-tray">
+      <div class="side">
+        <button class="demo-btn" id="demoBtn" aria-label="Show me how"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:40px;height:40px"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></button>
+        <span class="lbl" style="font-size:12px">Show me how</span>
+      </div>
+      <button class="play-btn" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:52px;height:52px;margin-left:6px"><path d="M7 4.5l13 7.5-13 7.5z" fill="#FFFBF4" stroke="#2A2433" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+      <div class="side r">
+        <span class="lbl" style="font-size:12px;text-align:right">Level</span>
+        <button class="lvl" data-level="0" aria-pressed="true" aria-label="Easy level"><span></span></button>
+        <button class="lvl" data-level="1" aria-pressed="false" aria-label="Harder level"><span></span><span></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PLAY ===== -->
+  <section id="play" class="screen" aria-label="Game">
+    <svg viewBox="0 0 1180 820" aria-hidden="true" style="position:absolute;left:0;top:0;width:1180px;height:820px">
+      <circle id="glow" class="glow" cx="810" cy="244" r="150" fill="#F7E6B5"/>
+      <circle cx="810" cy="244" r="104" fill="#F7E6B5" stroke="#1C1930" stroke-width="3"/>
+      <circle cx="774" cy="214" r="18" fill="#EBD594"/><circle cx="840" cy="266" r="26" fill="#EBD594"/><circle cx="832" cy="198" r="10" fill="#EBD594"/><circle cx="780" cy="284" r="9" fill="#EBD594"/>
+      <path d="M-40 610 C 200 430 520 430 760 610 Z" fill="#3E3966" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M480 630 C 760 480 1060 480 1240 630 Z" fill="#48427A" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="1040" y="470" width="14" height="110" rx="6" fill="#2A2648" stroke="#1C1930" stroke-width="3"/><circle cx="1047" cy="460" r="46" fill="#3E3966" stroke="#1C1930" stroke-width="3"/>
+      <path d="M-10 610 Q 590 580 1190 610 V830 H-10 Z" fill="#2A2648" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M-20 514 H520 Q 540 529 520 544 H-20 Z" fill="#7A5A52" stroke="#1C1930" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M400 520 L 500 470" stroke="#1C1930" stroke-width="22" stroke-linecap="round"/>
+      <path d="M400 520 L 500 470" stroke="#7A5A52" stroke-width="15" stroke-linecap="round"/>
+      <ellipse cx="512" cy="456" rx="26" ry="15" fill="#6E9773" stroke="#1C1930" stroke-width="3" transform="rotate(-30 512 456)"/>
+    </svg>
+    <span class="st" style="left:140px;top:150px"></span><span class="st" style="left:300px;top:120px;animation-delay:.7s"></span><span class="st" style="left:460px;top:190px;animation-delay:1.4s"></span><span class="st" style="left:560px;top:140px;animation-delay:2.1s"></span><span class="st" style="left:1060px;top:170px;animation-delay:.3s"></span><span class="st" style="left:1110px;top:330px;animation-delay:1.1s"></span><span class="st" style="left:640px;top:290px;animation-delay:1.8s"></span><span class="st" style="left:990px;top:430px;animation-delay:2.5s"></span><span class="st" style="left:380px;top:330px;animation-delay:.9s"></span>
+    <svg viewBox="0 0 220 260" role="img" aria-label="Owl" style="position:absolute;left:150px;top:272px;width:220px;height:260px;overflow:visible;z-index:3"><use id="owlP" class="owl" href="#owl" width="220" height="260"/></svg>
+    <button id="pic" aria-label="Picture"><svg viewBox="0 0 100 100" aria-hidden="true"><use id="picUse" href="#p-moon"/></svg></button>
+    <div id="slot" aria-label="Empty letter space" aria-live="polite"></div>
+    <div id="word" aria-hidden="true"></div>
+    <div id="flies"></div>
+    <div class="tray" id="answers" aria-label="Pick a letter"></div>
+  </section>
+
+  <!-- ===== WIN ===== -->
+  <section id="win" class="screen" aria-label="Well done">
+    <div class="win-card">
+      <div class="win-stars" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg></div>
+      <h2 class="display">Hoo-ray!</h2>
+      <p style="margin:0;font-size:22px;font-weight:700;color:#3A3346">You found every first sound. Owl’s night sky is glowing with letters.</p>
+      <svg viewBox="0 0 220 260" aria-hidden="true" style="width:140px;height:166px;overflow:visible"><use class="owl happy" href="#owl" style="animation-iteration-count:infinite"/></svg>
+      <div class="win-row">
+        <button class="btn" id="winHome" aria-label="Back to start"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg></button>
+        <button class="play-btn" id="againBtn" aria-label="Play again" style="margin-top:0;width:104px;height:104px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:46px;height:46px;fill:none;stroke:#FFFBF4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="hand" aria-hidden="true"><svg viewBox="0 0 64 64" width="76" height="76"><use href="#handpt"/></svg></div>
+</div>
+
+<script>
+/* ================= Shared PlayPrompt shell ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const stage = $('#stage');
+const S = { level: 0, round: 0, rounds: 5, stars: 0, muted: false, busy: false, demo: false, hintTimer: 0, timers: [] };
+const STAR_AT = [2, 4, 5];                       // rounds completed -> star 1, 2, 3
+
+function fit() {
+  const s = Math.min(innerWidth / 1180, innerHeight / 820);
+  stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+function later(fn, ms) { const t = setTimeout(fn, ms); S.timers.push(t); return t; }
+function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; clearTimeout(S.hintTimer); }
+
+/* voice */
+function say(text) {
+  if (S.muted || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.9; u.pitch = 1.15; u.lang = 'en-US';
+  const v = speechSynthesis.getVoices().find(v => /en(-|_)(US|GB)/.test(v.lang) && /female|samantha|karen|serena|google us/i.test(v.name));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+/* sound effects */
+let AC;
+function tone(f, d = .15, type = 'sine', v = .14, when = 0) {
+  if (S.muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + when, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .05);
+  } catch (e) {}
+}
+const sfx = {
+  pop: (n = 0) => tone(520 + n * 70, .12, 'triangle'),
+  yes: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .28, 'triangle', .12, i * .09)),
+  no:  () => { tone(330, .18, 'sine', .1); tone(262, .24, 'sine', .1, .14); },
+  win: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .3, 'triangle', .12, i * .13)),
+};
+
+/* stars */
+function drawStars() {
+  $('#stars').innerHTML = [0, 1, 2].map(i =>
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#star" fill="${i < S.stars ? '#E8B33B' : '#FFFBF4'}"/></svg>`).join('');
+  $('#stars').setAttribute('aria-label', `${S.stars} of 3 stars`);
+}
+function earnRound() {
+  S.round++;
+  const s = STAR_AT.filter(r => S.round >= r).length;
+  if (s > S.stars) { S.stars = s; drawStars(); $('#stars').children[s - 1].classList.add('pop'); }
+}
+
+/* hand pointer */
+const hand = $('#hand');
+function handTo(x, y, show = true) { hand.style.left = x + 'px'; hand.style.top = y + 'px'; hand.classList.toggle('on', show); }
+function handTap() { hand.classList.remove('tap'); void hand.offsetWidth; hand.classList.add('tap'); }
+function handHide() { hand.classList.remove('on', 'nudge'); }
+function centerOf(el) {                       // element centre in stage coordinates
+  const r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = sr.width / 1180;
+  return { x: (r.left + r.width / 2 - sr.left) / k, y: (r.top + r.height / 2 - sr.top) / k };
+}
+function pointAt(el) { const c = centerOf(el); handTo(c.x - 37, c.y - 8); }
+function armHint() {
+  clearTimeout(S.hintTimer);
+  S.hintTimer = setTimeout(() => { if (!S.busy && !S.demo) { const el = Game.hintTarget(); if (el) { pointAt(el); hand.classList.add('nudge'); Game.prompt(); } } }, 9000);
+}
+
+/* screens */
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
+
+function goHome() {
+  clearTimers(); handHide(); S.demo = false;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  S.stars = 0; drawStars(); show('home');
+}
+function startGame(demo) {
+  clearTimers(); handHide();
+  S.round = 0; S.stars = 0; S.busy = false; S.demo = !!demo; drawStars();
+  show('play');
+  Game.newRound();
+  if (demo) later(() => Game.demo(() => { S.demo = false; handHide(); later(() => { Game.newRound(); }, 600); }), 400);
+}
+function roundDone() {
+  earnRound(); handHide();
+  if (S.round >= S.rounds) { later(winGame, 1800); }
+  else later(() => Game.newRound(), 1900);
+}
+function winGame() {
+  show('win'); sfx.win(); say(Game.winLine);
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('span'); c.className = 'confetti';
+    c.style.left = Math.random() * 1180 + 'px';
+    c.style.background = ['#E8B33B', '#D9774F', '#6E9773', '#6B4A6E', '#7FA6C4'][i % 5];
+    c.style.animationDuration = 1.8 + Math.random() * 1.6 + 's';
+    c.style.animationDelay = Math.random() * .6 + 's';
+    stage.appendChild(c); setTimeout(() => c.remove(), 4200);
+  }
+}
+
+/* top bar controls */
+(function holdHome() {
+  const b = $('#homeBtn'); let t;
+  const start = e => { e.preventDefault(); b.classList.add('holding'); t = setTimeout(() => { b.classList.remove('holding'); goHome(); }, 900); };
+  const stop = () => { clearTimeout(t); b.classList.remove('holding'); };
+  b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') goHome(); });
+})();
+$('#soundBtn').addEventListener('click', () => {
+  if ($('#home').classList.contains('on')) {
+    S.muted = !S.muted;
+    $('#soundBtn').classList.toggle('muted', S.muted);
+    $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off' : 'Sound on');
+    if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+  } else Game.prompt();
+});
+$('#storyBtn').addEventListener('click', () => say($('#story').textContent));
+$$('.lvl').forEach(b => b.addEventListener('click', () => {
+  S.level = +b.dataset.level; sfx.pop(S.level);
+  $$('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  say(S.level ? 'Harder! Let’s go.' : 'Easy. Nice and gentle.');
+}));
+$('#playBtn').addEventListener('click', () => { sfx.pop(); startGame(false); });
+$('#demoBtn').addEventListener('click', () => { sfx.pop(); startGame(true); });
+$('#againBtn').addEventListener('click', () => startGame(false));
+$('#winHome').addEventListener('click', goHome);
+drawStars();
+
+/* ================= Game: Owl's Night Letters ================= */
+const ITEMS = [
+  { w: 'moon', L: 'M', str: 'Mmmm… moon' },
+  { w: 'sun',  L: 'S', str: 'Ssss… sun' },
+  { w: 'ball', L: 'B', str: 'Buh, buh… ball' },
+  { w: 'tree', L: 'T', str: 'Tuh, tuh… tree' },
+  { w: 'fish', L: 'F', str: 'Ffff… fish' },
+  { w: 'hat',  L: 'H', str: 'Huh, huh… hat' },
+  { w: 'cup',  L: 'C', str: 'Kuh, kuh… cup' },
+  { w: 'kite', L: 'K', str: 'Kuh, kuh… kite' },
+  { w: 'pig',  L: 'P', str: 'Puh, puh… pig' },
+  { w: 'duck', L: 'D', str: 'Duh, duh… duck' },
+];
+const SOUND = { M: 'mmm', S: 'sss', B: 'buh', T: 'tuh', F: 'fff', H: 'huh', C: 'kuh', K: 'kuh', P: 'puh', D: 'duh', N: 'nnn', G: 'guh' };
+// letters in one group sound alike (or identical) and never share a tray on Easy
+const GROUP = { B: 'stop', P: 'stop', D: 'stop', T: 'stop', M: 'nasal', N: 'nasal', F: 'hiss', S: 'hiss', C: 'k', K: 'k', G: 'k', H: 'h' };
+const SIMILAR = { M: ['N'], S: ['F'], F: ['S'], B: ['P', 'D'], P: ['B', 'D'], D: ['B', 'P'], T: ['D'], C: ['G'], K: ['G'], H: [] };
+const FLY_HOME = [[470, 200], [540, 300], [990, 380], [460, 440], [1100, 250], [950, 560]];
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+const Game = {
+  item: null, options: [], deck: [], solved: false, wrongs: 0,
+  winLine: 'Hoo-ray! You found every first sound!',
+
+  prompt() {
+    const it = this.item; if (!it) return;
+    say(this.solved ? `${it.L} is for ${it.w}!` : `${it.w}. ${it.str}. Which letter does ${it.w} start with?`);
+  },
+
+  newRound() {
+    S.busy = false; this.solved = false; this.wrongs = 0;
+    if (S.round === 0 && !S.demo && this.deck.length < 5) this.deck = [];
+    if (!this.deck.length) this.deck = shuffle(ITEMS).filter(x => x !== this.item);
+    this.item = this.deck.pop();
+    this.options = this.pickOptions(this.item.L);
+    const pic = $('#pic');
+    $('#picUse').setAttribute('href', '#p-' + this.item.w);
+    pic.setAttribute('aria-label', this.item.w);
+    pic.classList.remove('pop'); void pic.offsetWidth; pic.classList.add('pop');
+    const slot = $('#slot'); slot.textContent = ''; slot.classList.remove('filled');
+    $('#word').classList.remove('on');
+    $$('#play .flyL').forEach(e => e.remove());
+    this.resetFlies(); this.renderAnswers();
+    if (!S.demo) later(() => this.prompt(), 600);
+    armHint();
+  },
+
+  pickOptions(L) {
+    const used = new Set([GROUP[L]]), out = [L];
+    const want = S.level ? 4 : 3;
+    if (S.level && SIMILAR[L].length) out.push(shuffle(SIMILAR[L])[0]);
+    for (const x of shuffle(Object.keys(GROUP))) {
+      if (out.length >= want) break;
+      if (!used.has(GROUP[x])) { out.push(x); used.add(GROUP[x]); }
+    }
+    return shuffle(out);
+  },
+
+  renderAnswers() {
+    const tray = $('#answers'); tray.innerHTML = ''; tray.classList.remove('locked');
+    this.options.forEach(L => {
+      const b = document.createElement('button');
+      b.className = 'tt let'; b.dataset.l = L; b.textContent = L;
+      b.setAttribute('aria-label', 'Letter ' + L);
+      b.onclick = () => { if (S.demo || S.busy || this.solved) return; this.answer(L, b); };
+      tray.appendChild(b);
+    });
+  },
+
+  answer(L, b) {
+    if (this.solved) return;
+    handHide(); hand.classList.remove('nudge');
+    const it = this.item;
+    if (L === it.L) {
+      this.solved = true; S.busy = true; clearTimeout(S.hintTimer);
+      $('#answers').classList.add('locked');
+      b.classList.add('right'); sfx.yes();
+      this.flyLetter(b);
+      const owl = $('#owlP'); owl.classList.remove('happy', 'think'); void owl.getBBox(); owl.classList.add('happy');
+      say(`${SOUND[L]}! ${L} is for ${it.w}!`);
+      if (!S.demo) roundDone();
+    } else {
+      this.wrongs++;
+      b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx.no();
+      const owl = $('#owlP'); owl.classList.remove('think'); void owl.getBBox(); owl.classList.add('think');
+      say(`That one says ${SOUND[L]}. Listen again: ${it.str}. ${SOUND[it.L]}!`);
+      later(() => b.classList.add('dim'), 450);           // fewer choices next time
+      if (this.wrongs >= 2 && !S.demo) later(() => { if (!this.solved) { pointAt($(`#answers [data-l="${it.L}"]`)); hand.classList.add('nudge'); } }, 2600);
+      armHint();
+    }
+  },
+
+  flyLetter(tile) {
+    const from = centerOf(tile), to = centerOf($('#slot'));
+    const f = document.createElement('div'); f.className = 'flyL let'; f.textContent = this.item.L;
+    f.style.left = from.x - 50 + 'px'; f.style.top = from.y - 50 + 'px';
+    $('#play').appendChild(f); void f.offsetWidth;
+    f.style.left = to.x - 50 + 'px'; f.style.top = to.y - 50 + 'px'; f.style.transform = 'scale(1.1) rotate(-8deg)';
+    later(() => {
+      f.remove();
+      const slot = $('#slot'); slot.textContent = this.item.L; slot.classList.add('filled');
+      const w = this.item.w; $('#word').innerHTML = `<b>${w[0].toUpperCase()}</b>${w.slice(1)}`; $('#word').classList.add('on');
+      const g = $('#glow'); g.classList.remove('pulse'); void g.getBBox(); g.classList.add('pulse');
+      this.swirl();
+    }, 720);
+  },
+
+  resetFlies() {
+    const box = $('#flies');
+    if (!box.children.length) box.innerHTML = FLY_HOME.map((p, i) => `<span class="fly" style="animation-delay:${-i * .7}s"></span>`).join('');
+    [...box.children].forEach((f, i) => { f.classList.remove('swirl', 'bright'); f.style.left = FLY_HOME[i][0] + 'px'; f.style.top = FLY_HOME[i][1] + 'px'; });
+  },
+
+  swirl() {
+    const flies = [...$('#flies').children], c = { x: 810, y: 449 };
+    flies.forEach(f => f.classList.add('swirl', 'bright'));
+    for (let k = 0; k < 6; k++) later(() => flies.forEach((f, i) => {
+      const a = (i / flies.length) * Math.PI * 2 + k * .9, r = 92 - k * 4;
+      f.style.left = c.x + Math.cos(a) * r - 7 + 'px'; f.style.top = c.y + Math.sin(a) * r * .9 - 7 + 'px';
+    }), k * 260);
+    later(() => { flies.forEach(f => f.classList.remove('swirl')); this.resetFlies(); }, 6 * 260 + 300);
+  },
+
+  autoSolve() { const b = $(`#answers [data-l="${this.item.L}"]`); b && b.click(); },   // test helper
+  wrongTarget() {                                                                       // test helper
+    const w = $$('#answers .tt').filter(b => b.dataset.l !== this.item.L);
+    return w.find(b => !b.classList.contains('dim')) || w[0];
+  },
+
+  hintTarget() { return this.wrongs ? $(`#answers [data-l="${this.item.L}"]`) : $('#pic'); },
+
+  demo(done) {
+    const it = this.item, pic = $('#pic');
+    say(`Watch me! I look at the picture and listen. ${it.w}. ${it.str}.`);
+    later(() => handTo(560, 700), 0);
+    later(() => { pointAt(pic); later(handTap, 600); }, 900);
+    later(() => { say(`${it.w} starts with ${SOUND[it.L]}. I tap the letter that says ${SOUND[it.L]}!`); }, 4400);
+    later(() => { const btn = $(`#answers [data-l="${it.L}"]`); pointAt(btn); later(() => { handTap(); this.answer(it.L, btn); }, 800); }, 8000);
+    later(() => { handHide(); say('Now it’s your turn!'); later(done, 1600); }, 12000);
+  },
+};
+$('#pic').addEventListener('click', () => { if (S.demo || !Game.item) return; sfx.pop(); say(Game.solved ? `${Game.item.L} is for ${Game.item.w}!` : `${Game.item.w}. ${Game.item.str}.`); armHint(); });
+Game.resetFlies();
+</script>
+</body>
+</html>

@@ -1,0 +1,676 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Rabbit's Shape Train</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* ===== Shared PlayPrompt shell: palette ===== */
+:root{
+  --ink:#2A2433; --paper:#FFFBF4; --tray:#F6EEE2; --teal:#2F6D6A; --sun:#E8B33B;
+  --clay:#D9774F; --plum:#6B4A6E; --muted:#4A5463; --line:#E4D9CC;
+  --scene:#CFE0EA;            /* per-game world background */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--scene);touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;color:inherit}
+#stage{position:absolute;left:50%;top:50%;width:1180px;height:820px;transform-origin:center;overflow:hidden;background:var(--scene);border-radius:24px}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.display{font-family:'Baloo 2','Nunito',sans-serif;font-weight:800}
+
+/* top bar */
+#topbar{position:absolute;left:0;top:0;width:1180px;height:104px;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;z-index:20;pointer-events:none}
+#topbar>*{pointer-events:auto}
+.ico{width:32px;height:32px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.btn{position:relative;width:72px;height:72px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn .ring{position:absolute;inset:-9px;width:84px;height:84px;transform:rotate(-90deg);pointer-events:none}
+.btn .ring circle{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;stroke-dasharray:245;stroke-dashoffset:245}
+.btn.holding .ring circle{transition:stroke-dashoffset .9s linear;stroke-dashoffset:0}
+.btn.hidden{visibility:hidden}
+.btn .slash{display:none}
+.btn.muted .slash{display:inline}
+.btn.muted .wave{display:none}
+#stars{display:flex;gap:8px}
+#stars svg{width:46px;height:46px;transition:transform .3s}
+#stars svg.pop{animation:starpop .6s}
+@keyframes starpop{0%{transform:scale(1)}40%{transform:scale(1.5) rotate(15deg)}100%{transform:scale(1)}}
+
+/* tray */
+.tray{position:absolute;left:0;bottom:0;width:1180px;height:150px;background:var(--paper);border-top:3px solid var(--ink);border-radius:36px 36px 0 0;display:flex;align-items:center;justify-content:center;gap:28px;z-index:10}
+.tt{width:100px;height:100px;border-radius:30px;border:3px solid var(--ink);background:var(--tray);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;padding:0;cursor:pointer;transition:transform .08s,outline-color .2s}
+.tt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.sel{outline:5px solid var(--teal);outline-offset:5px}
+.tt.right{background:#CFE6D6;outline:5px solid var(--teal);outline-offset:5px;animation:bounce .5s}
+.tt.wrong{animation:wobble .45s}
+@keyframes wobble{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}
+.tray.locked .tt{pointer-events:none}
+
+/* hand pointer (hint + demo) */
+/* kid-proofing: input lock during demo, rotate prompt on upright phones */
+#blocker{position:absolute;left:0;top:104px;width:1180px;height:716px;z-index:25;display:none}
+#blocker.on{display:block}
+#rotate{display:none;position:fixed;inset:0;z-index:100;background:var(--scene);align-items:center;justify-content:center;flex-direction:column;gap:24px}
+#rotate svg{width:140px;height:140px;animation:turn 2.4s ease-in-out infinite}
+@keyframes turn{0%,20%{transform:rotate(0)}50%,70%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
+@media (orientation:portrait) and (max-width:760px){#rotate{display:flex}}
+#hand{position:absolute;width:76px;height:76px;z-index:30;pointer-events:none;opacity:0;transition:left .7s ease-in-out,top .7s ease-in-out,opacity .3s}
+#hand.on{opacity:1}
+#hand.tap svg{animation:tap .35s}
+#hand.nudge svg{animation:nudge 1s infinite}
+@keyframes tap{50%{transform:scale(.82) translateY(6px)}}
+@keyframes nudge{50%{transform:translateY(-14px)}}
+
+/* ===== Home (start) screen ===== */
+#home{background:var(--scene)}
+.home-main{position:absolute;left:0;top:104px;width:1180px;height:566px;padding:28px 40px 24px;display:grid;grid-template-columns:480px minmax(0,1fr);gap:40px}
+.hero{position:relative;border-radius:32px;overflow:hidden;border:3px solid var(--ink);height:100%}
+.hero svg{display:block;width:100%;height:100%}
+.home-copy{display:flex;flex-direction:column;gap:18px;min-width:0}
+.lbl{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.home-copy h1{margin:0;font-size:52px;line-height:1.02}
+.speak{display:flex;align-items:center;gap:14px}
+.speak button{flex:none;width:56px;height:56px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 3px 0 var(--ink)}
+.speak p{margin:0;font-size:21px;line-height:1.35;font-weight:700;color:#3A3346}
+.steps{display:flex;gap:14px}
+.step{flex:1;min-width:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.sn{position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:15px}
+.gest{width:80px;height:80px;border-radius:50%;background:var(--tray);display:grid;place-items:center}
+.gest svg{width:46px;height:46px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.step b{font-size:15px;font-weight:800;text-align:center;line-height:1.2}
+.grownup{margin-top:auto;background:var(--paper);border:2px dashed #B9AC9C;border-radius:16px;padding:12px 18px;display:flex;flex-direction:column;gap:4px}
+.grownup .row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.grownup .row span:last-child{font-size:15px;font-weight:700;color:#3A3346}
+.grownup .tip{font-size:14px;color:var(--muted);font-weight:600}
+.home-tray{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:0 60px;gap:0}
+.demo-btn{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.play-btn{width:120px;height:120px;border-radius:50%;border:3px solid var(--ink);background:var(--teal);display:grid;place-items:center;margin-top:-44px;box-shadow:0 6px 0 var(--ink);cursor:pointer;padding:0;animation:breathe 2.4s ease-in-out infinite}
+.play-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+@keyframes breathe{50%{transform:scale(1.06)}}
+.lvl{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:flex;align-items:center;justify-content:center;gap:6px;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.lvl span{width:16px;height:16px;border-radius:50%;background:var(--ink)}
+.lvl[aria-pressed="true"]{outline:5px solid var(--teal);outline-offset:5px;background:#CFE6D6}
+.side{display:flex;align-items:center;gap:12px}
+.side.r{justify-content:flex-end}
+.wave{transform-box:fill-box;transform-origin:50% 90%;animation:wave 2.2s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-5deg) translateY(-6px)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg) translateY(-4px)}}
+.floaty{animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-8px)}}
+
+/* ===== Win screen ===== */
+#win{background:rgba(42,36,51,.55);z-index:40}
+.win-card{position:absolute;left:50%;top:50%;width:640px;transform:translate(-50%,-50%);background:var(--paper);border:3px solid var(--ink);border-radius:40px;box-shadow:0 8px 0 var(--ink);padding:36px 40px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.win-card h2{margin:0;font-size:56px;line-height:1}
+.win-stars{display:flex;gap:14px}
+.win-stars svg{width:96px;height:96px;opacity:0;transform:scale(.3)}
+#win.on .win-stars svg{animation:winstar .5s forwards}
+#win.on .win-stars svg:nth-child(2){animation-delay:.25s}
+#win.on .win-stars svg:nth-child(3){animation-delay:.5s}
+@keyframes winstar{to{opacity:1;transform:scale(1)}}
+.win-row{display:flex;gap:28px;align-items:center}
+.confetti{position:absolute;width:14px;height:14px;border-radius:3px;border:2px solid var(--ink);top:-20px;animation:fall linear forwards;z-index:41}
+@keyframes fall{to{transform:translateY(880px) rotate(540deg)}}
+
+/* ===== Game-specific: Rabbit's Shape Train ===== */
+#train{position:absolute;left:0;top:0;width:1180px;height:820px;pointer-events:none;z-index:5}
+#train.go{transition:transform 1.3s cubic-bezier(.55,0,.85,.35)}
+#train.come{transition:transform 1.3s cubic-bezier(.2,.7,.35,1)}
+.wagon{position:absolute;top:434px;width:190px;height:120px;border-radius:18px;background:var(--teal);border:3px solid var(--ink);display:grid;place-items:center;pointer-events:auto;cursor:pointer;transition:outline-color .2s}
+.wagon svg{width:84px;height:84px;overflow:visible;display:block}
+.wagon.next{outline:5px solid var(--sun);outline-offset:5px}
+.wagon.next svg{animation:slotpulse 1.4s ease-in-out infinite}
+@keyframes slotpulse{50%{transform:scale(1.1)}}
+.wagon svg.snap{animation:snap .45s cubic-bezier(.3,1.6,.6,1)}
+@keyframes snap{0%{transform:scale(1.6)}100%{transform:scale(1)}}
+.wagon.shake svg{animation:wobble .45s}
+.coup{position:absolute;top:508px;width:36px;height:10px;background:var(--ink)}
+.wheel{position:absolute;top:534px;width:44px;height:44px}
+.wheel.big{left:930px;top:516px;width:64px;height:64px}
+#train.rolling .wheel{animation:spin .4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.rab{transform-box:fill-box;transform-origin:50% 100%}
+.rab.happy{animation:hop .45s 2}
+@keyframes hop{50%{transform:translateY(-22px)}}
+.rab.think{animation:think 1s}
+@keyframes think{25%{transform:rotate(-7deg)}75%{transform:rotate(7deg)}}
+.tt.shape{touch-action:none}
+.tt.shape svg{width:66px;height:66px;overflow:visible;pointer-events:none}
+#ghost{position:absolute;left:0;top:0;width:96px;height:96px;margin:-48px 0 0 -48px;z-index:25;pointer-events:none;display:none;filter:drop-shadow(0 6px 0 rgba(42,36,51,.25))}
+#ghost.on{display:block}
+#ghost.fly{transition:left .4s ease-in-out,top .4s ease-in-out}
+#ghost svg{width:96px;height:96px;overflow:visible}
+.steam{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--paper);border:3px solid var(--ink);z-index:4;pointer-events:none;animation:steam 1.4s ease-out forwards}
+@keyframes steam{to{transform:translate(-50px,-150px) scale(2);opacity:0}}
+</style>
+</head>
+<body>
+
+<!-- Reusable drawings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke="#2A2433" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="handpt" viewBox="0 0 64 64"><path d="M26 34V12a5 5 0 0 1 10 0v16l12 3a6 6 0 0 1 4.5 7l-2.5 13a8 8 0 0 1-8 6.5H31a8 8 0 0 1-6.4-3.2L15 44a5 5 0 0 1 7-7z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="rabbit" viewBox="0 0 100 150">
+      <ellipse cx="34" cy="40" rx="11" ry="36" fill="#EFE6D8" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/><ellipse cx="34" cy="46" rx="4.5" ry="24" fill="#F2B8A6"/>
+      <ellipse cx="66" cy="40" rx="11" ry="36" fill="#EFE6D8" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/><ellipse cx="66" cy="46" rx="4.5" ry="24" fill="#F2B8A6"/>
+      <circle cx="50" cy="110" r="34" fill="#EFE6D8" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="38" cy="104" r="4.5" fill="#2A2433"/><circle cx="62" cy="104" r="4.5" fill="#2A2433"/>
+      <path d="M45 116 h10 l-5 6 z" fill="#D9774F"/>
+      <path d="M42 128 Q 50 134 58 128" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="27" cy="120" r="7" fill="#F2B8A6"/><circle cx="73" cy="120" r="7" fill="#F2B8A6"/>
+    </symbol>
+    <symbol id="engine" viewBox="0 0 310 250">
+      <rect x="37" y="32" width="48" height="76" rx="9" fill="#2A2433" stroke="#2A2433" stroke-width="3"/>
+      <path d="M5 160 A60 60 0 0 1 65 100 H187 A18 18 0 0 1 205 118 V202 A18 18 0 0 1 187 220 H23 A18 18 0 0 1 5 202 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3"/>
+      <rect x="145" y="20" width="140" height="200" rx="18" fill="#C4623E" stroke="#2A2433" stroke-width="3"/>
+      <rect x="167" y="48" width="96" height="80" rx="14" fill="#3A3346" stroke="#2A2433" stroke-width="3"/>
+      <rect x="131" y="2" width="168" height="26" rx="13" fill="#2A2433"/>
+      <circle cx="32" cy="173" r="15" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
+    </symbol>
+    <symbol id="wheel" viewBox="-22 -22 44 44"><circle r="20.5" fill="#2A2433"/><circle r="9" fill="#F6EEE2"/><circle cy="-15.5" r="2.6" fill="#F6EEE2"/></symbol>
+  </defs>
+</svg>
+
+<div id="rotate" role="alert" aria-label="Please turn the device sideways"><svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="#2A2433" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="6" width="28" height="52" rx="6" fill="#FFFBF4"/><path d="M28 50h8"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" style="width:64px;height:64px;animation:none" fill="none" stroke="#2F6D6A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
+
+<div id="stage">
+
+  <!-- shared top bar -->
+  <div id="topbar">
+    <button class="btn hidden" id="homeBtn" aria-label="Home, press and hold">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+    </button>
+    <div id="stars" role="img" aria-label="0 of 3 stars"></div>
+    <button class="btn" id="soundBtn" aria-label="Sound on. Grown-ups: press and hold to turn sound off">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
+    </button>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <section id="home" class="screen on" aria-label="Start screen">
+    <div class="home-main">
+      <div class="hero">
+        <svg viewBox="0 0 480 514" aria-hidden="true">
+          <rect width="480" height="514" fill="#CFE0EA"/>
+          <g class="floaty"><path d="M330 92 a26 26 0 0 1 40 -22 a32 32 0 0 1 58 6 a22 22 0 0 1 10 40 H342 a22 22 0 0 1 -12 -24 z" fill="#FFFBF4" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></g>
+          <path d="M-30 412 C 70 250 250 250 350 412 Z" fill="#C9D8A8" stroke="#2A2433" stroke-width="3"/>
+          <path d="M190 412 C 310 280 470 280 530 412 Z" fill="#B3C98E" stroke="#2A2433" stroke-width="3"/>
+          <rect x="74" y="300" width="10" height="70" rx="4" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/><circle cx="79" cy="292" r="28" fill="#6E9773" stroke="#2A2433" stroke-width="3"/>
+          <path d="M-10 408 Q 240 394 490 408 V520 H-10 Z" fill="#9DBB7A" stroke="#2A2433" stroke-width="3"/>
+          <rect x="0" y="410" width="480" height="6" fill="#5A4038"/>
+          <g fill="#B5793F"><rect x="6" y="416" width="26" height="10"/><rect x="62" y="416" width="26" height="10"/><rect x="118" y="416" width="26" height="10"/><rect x="174" y="416" width="26" height="10"/><rect x="230" y="416" width="26" height="10"/><rect x="286" y="416" width="26" height="10"/><rect x="342" y="416" width="26" height="10"/><rect x="398" y="416" width="26" height="10"/><rect x="454" y="416" width="26" height="10"/></g>
+          <g class="floaty"><circle cx="286" cy="230" r="12" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/><circle cx="262" cy="194" r="17" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/><circle cx="226" cy="146" r="24" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/></g>
+          <rect x="44" y="360" width="25" height="7" fill="#2A2433"/><rect x="198" y="360" width="25" height="7" fill="#2A2433"/>
+          <rect x="-90" y="308" width="134" height="84" rx="13" fill="#2F6D6A" stroke="#2A2433" stroke-width="3"/>
+          <path d="M-23 330 L3 374 H-49 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+          <rect x="74" y="308" width="134" height="84" rx="13" fill="#2F6D6A" stroke="#2A2433" stroke-width="3"/>
+          <rect x="120" y="328" width="44" height="44" rx="5" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
+          <use href="#wheel" x="-8" y="378" width="31" height="31"/><use href="#wheel" x="86" y="378" width="31" height="31"/><use href="#wheel" x="162" y="378" width="31" height="31"/>
+          <use href="#engine" x="232" y="238" width="217" height="175"/>
+          <use href="#wheel" x="256" y="378" width="31" height="31"/><use href="#wheel" x="319" y="378" width="31" height="31"/><use href="#wheel" x="375" y="365" width="45" height="45"/>
+          <g class="wave"><use href="#rabbit" x="347" y="207" width="70" height="105"/><ellipse cx="420" cy="262" rx="8" ry="14" transform="rotate(28 420 262)" fill="#EFE6D8" stroke="#2A2433" stroke-width="3"/></g>
+        </svg>
+      </div>
+      <div class="home-copy">
+        <span class="lbl">Shapes · circle, square, triangle &amp; more</span>
+        <h1 class="display">Rabbit's Shape Train</h1>
+        <div class="speak">
+          <button id="storyBtn" aria-label="Hear the story"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <p id="story">Toot toot! Rabbit's train is ready to go, but the wagons are empty. Can you find the right shape for each wagon?</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span><b>Listen to Rabbit</b></div>
+          <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="7" r="4"/><path d="M17 3l4 7h-8z"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17 13c-2-2.4-5 0-3 2.6L17 19l3-3.4c2-2.6-1-5-3-2.6z"/></svg></span><b>Find the same shape</b></div>
+          <div class="step"><span class="sn">3</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="15" width="6" height="6" rx="1"/><rect x="15" y="14" width="7" height="7" rx="1.5" stroke-dasharray="2 2.2"/><path d="M5 12c0-5 6-8 12-4"/><path d="M14.5 5.5l3 2.5-3.3 1.6"/></svg></span><b>Tap it or drag it to the wagon</b></div>
+        </div>
+        <div class="grownup">
+          <div class="row"><span class="lbl" style="font-size:11px">Grown-up</span><span>Naming and matching 2D shapes · about 3 min · 5 rounds</span></div>
+          <span class="tip">Ask: “How many corners does it have?” Counting sides and corners helps tell a square from a rectangle.</span>
+        </div>
+      </div>
+    </div>
+    <div class="tray home-tray">
+      <div class="side">
+        <button class="demo-btn" id="demoBtn" aria-label="Show me how"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:40px;height:40px"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></button>
+        <span class="lbl" style="font-size:12px">Show me how</span>
+      </div>
+      <button class="play-btn" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:52px;height:52px;margin-left:6px"><path d="M7 4.5l13 7.5-13 7.5z" fill="#FFFBF4" stroke="#2A2433" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+      <div class="side r">
+        <span class="lbl" style="font-size:12px;text-align:right">Level</span>
+        <button class="lvl" data-level="0" aria-pressed="true" aria-label="Easy level"><span></span></button>
+        <button class="lvl" data-level="1" aria-pressed="false" aria-label="Harder level"><span></span><span></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PLAY ===== -->
+  <section id="play" class="screen" aria-label="Game">
+    <svg viewBox="0 0 1180 820" aria-hidden="true" style="position:absolute;left:0;top:0;width:1180px;height:820px">
+      <g class="floaty"><path d="M120 210 a26 26 0 0 1 40 -22 a32 32 0 0 1 58 6 a22 22 0 0 1 10 40 H132 a22 22 0 0 1 -12 -24 z" fill="#FFFBF4" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></g>
+      <path d="M-40 540 C 200 340 520 340 760 540 Z" fill="#C9D8A8" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M500 560 C 760 370 1080 370 1240 560 Z" fill="#B3C98E" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="300" y="380" width="12" height="90" rx="5" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/><circle cx="306" cy="370" r="36" fill="#6E9773" stroke="#2A2433" stroke-width="3"/>
+      <rect x="1020" y="400" width="12" height="90" rx="5" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/><circle cx="1026" cy="390" r="40" fill="#7FA57F" stroke="#2A2433" stroke-width="3"/>
+      <path d="M-10 560 Q 590 530 1190 560 V830 H-10 Z" fill="#9DBB7A" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <rect x="0" y="578" width="1180" height="8" fill="#5A4038"/>
+    </svg>
+    <span style="position:absolute;left:0;top:586px;width:1180px;height:14px;background:repeating-linear-gradient(90deg,#B5793F 0 36px,transparent 36px 80px)"></span>
+    <div id="train">
+      <svg viewBox="0 0 1180 820" style="position:absolute;left:0;top:0;width:1180px;height:820px;overflow:visible" aria-hidden="true">
+        <g class="floaty">
+          <circle cx="790" cy="296" r="26" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/>
+          <circle cx="742" cy="236" r="34" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/>
+          <circle cx="690" cy="160" r="44" fill="#FFFBF4" stroke="#2A2433" stroke-width="3"/>
+          <g id="need"></g>
+        </g>
+      </svg>
+      <span class="coup" style="left:246px"></span><span class="coup" style="left:466px"></span><span class="coup" style="left:686px"></span>
+      <div id="wagons"></div>
+      <svg viewBox="0 0 310 250" aria-hidden="true" style="position:absolute;left:725px;top:334px;width:310px;height:250px;overflow:visible"><use href="#engine"/></svg>
+      <svg viewBox="0 0 100 150" role="img" aria-label="Rabbit, the train driver" style="position:absolute;left:890px;top:290px;width:100px;height:150px;overflow:visible"><use id="rab" class="rab" href="#rabbit" width="100" height="150"/></svg>
+      <svg class="wheel" style="left:78px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:186px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:298px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:406px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:518px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:626px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:760px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel" style="left:850px" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg><svg class="wheel big" viewBox="-22 -22 44 44" aria-hidden="true"><use href="#wheel" x="-22" y="-22" width="44" height="44"/></svg>
+      <span id="chim" style="position:absolute;left:780px;top:360px;width:12px;height:4px"></span>
+    </div>
+    <div id="ghost" aria-hidden="true"></div>
+    <div class="tray" id="tiles" aria-label="Pick a shape"></div>
+  </section>
+
+  <!-- ===== WIN ===== -->
+  <section id="win" class="screen" aria-label="Well done">
+    <div class="win-card">
+      <div class="win-stars" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg></div>
+      <h2 class="display">All aboard!</h2>
+      <p style="margin:0;font-size:22px;font-weight:700;color:#3A3346">You found every shape. Rabbit's train is off on a big trip!</p>
+      <svg viewBox="0 0 100 150" aria-hidden="true" style="width:100px;height:150px;overflow:visible"><use class="rab happy" href="#rabbit" style="animation-iteration-count:infinite"/></svg>
+      <div class="win-row">
+        <button class="btn" id="winHome" aria-label="Back to start"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg></button>
+        <button class="play-btn" id="againBtn" aria-label="Play again" style="margin-top:0;width:104px;height:104px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:46px;height:46px;fill:none;stroke:#FFFBF4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="blocker" aria-hidden="true"></div>
+  <div id="hand" aria-hidden="true"><svg viewBox="0 0 64 64" width="76" height="76"><use href="#handpt"/></svg></div>
+</div>
+
+<script>
+/* ================= Shared PlayPrompt shell ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const stage = $('#stage');
+const S = { level: 0, round: 0, rounds: 5, stars: 0, muted: false, busy: false, demo: false, hintTimer: 0, timers: [] };
+const STAR_AT = [2, 4, 5];                       // rounds completed -> star 1, 2, 3
+
+function fit() {
+  const s = Math.min(innerWidth / 1180, innerHeight / 820);
+  stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+function later(fn, ms) { const t = setTimeout(fn, ms); S.timers.push(t); return t; }
+function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; clearTimeout(S.hintTimer); }
+
+/* voice */
+function say(text) {
+  if (S.muted || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.9; u.pitch = 1.15; u.lang = 'en-US';
+  const v = speechSynthesis.getVoices().find(v => /en(-|_)(US|GB)/.test(v.lang) && /female|samantha|karen|serena|google us/i.test(v.name));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+/* sound effects */
+let AC;
+function tone(f, d = .15, type = 'sine', v = .14, when = 0) {
+  if (S.muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + when, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .05);
+  } catch (e) {}
+}
+const sfx = {
+  pop: (n = 0) => tone(520 + n * 70, .12, 'triangle'),
+  yes: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .28, 'triangle', .12, i * .09)),
+  no:  () => { tone(330, .18, 'sine', .1); tone(262, .24, 'sine', .1, .14); },
+  win: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .3, 'triangle', .12, i * .13)),
+};
+
+/* stars */
+function drawStars() {
+  $('#stars').innerHTML = [0, 1, 2].map(i =>
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#star" fill="${i < S.stars ? '#E8B33B' : '#FFFBF4'}"/></svg>`).join('');
+  $('#stars').setAttribute('aria-label', `${S.stars} of 3 stars`);
+}
+function earnRound() {
+  S.round++;
+  const s = STAR_AT.filter(r => S.round >= r).length;
+  if (s > S.stars) { S.stars = s; drawStars(); $('#stars').children[s - 1].classList.add('pop'); }
+}
+
+/* hand pointer */
+const hand = $('#hand');
+function handTo(x, y, show = true) { hand.style.left = x + 'px'; hand.style.top = y + 'px'; hand.classList.toggle('on', show); }
+function handTap() { hand.classList.remove('tap'); void hand.offsetWidth; hand.classList.add('tap'); }
+function handHide() { hand.classList.remove('on', 'nudge'); }
+function centerOf(el) {                       // element centre in stage coordinates
+  const r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = sr.width / 1180;
+  return { x: (r.left + r.width / 2 - sr.left) / k, y: (r.top + r.height / 2 - sr.top) / k };
+}
+function pointAt(el) { const c = centerOf(el); handTo(c.x - 37, c.y - 8); }
+function armHint() {
+  clearTimeout(S.hintTimer);
+  S.hintTimer = setTimeout(() => { if (!S.busy && !S.demo) { const el = Game.hintTarget(); if (el) { pointAt(el); hand.classList.add('nudge'); Game.prompt(); } } }, 9000);
+}
+
+/* screens */
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
+
+function setDemo(on) { S.demo = on; $('#blocker').classList.toggle('on', on); }
+let lastWatch = 0;
+$('#blocker').addEventListener('pointerdown', () => { if (Date.now() - lastWatch > 4000) { lastWatch = Date.now(); say('Watch first. Your turn is next!'); } });
+
+function goHome() {
+  clearTimers(); handHide(); setDemo(false);
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  S.stars = 0; drawStars(); show('home');
+}
+function startGame(demo) {
+  clearTimers(); handHide();
+  S.round = 0; S.stars = 0; S.busy = false; setDemo(!!demo); drawStars();
+  show('play');
+  Game.newRound();
+  if (demo) later(() => Game.demo(() => { setDemo(false); handHide(); later(() => { Game.newRound(); }, 600); }), 400);
+}
+function roundDone() {
+  earnRound(); handHide();
+  if (S.round >= S.rounds) { later(winGame, 1800); }
+  else later(() => Game.newRound(), 1900);
+}
+function winGame() {
+  show('win'); sfx.win(); say(Game.winLine);
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('span'); c.className = 'confetti';
+    c.style.left = Math.random() * 1180 + 'px';
+    c.style.background = ['#E8B33B', '#D9774F', '#6E9773', '#6B4A6E', '#7FA6C4'][i % 5];
+    c.style.animationDuration = 1.8 + Math.random() * 1.6 + 's';
+    c.style.animationDelay = Math.random() * .6 + 's';
+    stage.appendChild(c); setTimeout(() => c.remove(), 4200);
+  }
+}
+
+/* top bar controls */
+// press-and-hold buttons: a stray tap from a small hand never quits or mutes
+function holdable(b, onHold, onTap) {
+  let t, held = false;
+  const start = e => { e.preventDefault(); held = false; b.classList.add('holding'); t = setTimeout(() => { held = true; b.classList.remove('holding'); onHold(); }, 900); };
+  const stop = e => { clearTimeout(t); b.classList.remove('holding'); if (e.type === 'pointerup' && !held && onTap) onTap(); held = true; };
+  b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onHold(); } });
+}
+holdable($('#homeBtn'), goHome);
+function toggleMute() {
+  S.muted = !S.muted;
+  $('#soundBtn').classList.toggle('muted', S.muted);
+  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off. Press and hold to turn sound on' : 'Sound on. Grown-ups: press and hold to turn sound off');
+  if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+}
+holdable($('#soundBtn'), toggleMute, () => { if ($('#home').classList.contains('on')) say($('#story').textContent); else if (!S.demo) Game.prompt(); });
+$('#storyBtn').addEventListener('click', () => say($('#story').textContent));
+$$('.lvl').forEach(b => b.addEventListener('click', () => {
+  S.level = +b.dataset.level; sfx.pop(S.level);
+  $$('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  say(S.level ? 'Harder! Let’s go.' : 'Easy. Nice and gentle.');
+}));
+$('#playBtn').addEventListener('click', () => { sfx.pop(); startGame(false); });
+$('#demoBtn').addEventListener('click', () => { sfx.pop(); startGame(true); });
+$('#againBtn').addEventListener('click', () => startGame(false));
+$('#winHome').addEventListener('click', goHome);
+drawStars();
+
+/* ================= Game: Rabbit's Shape Train ================= */
+const starPts = Array.from({ length: 10 }, (_, i) => { const r = i % 2 ? 15 : 37, a = (-90 + i * 36) * Math.PI / 180; return `${(40 + r * Math.cos(a)).toFixed(1)},${(43 + r * Math.sin(a)).toFixed(1)}`; }).join(' ');
+const SHAPES = {
+  circle:    { hint: 'it is round, with no corners',             el: a => `<circle cx="40" cy="40" r="32" ${a}/>` },
+  triangle:  { hint: 'it has three sides and three pointy corners', el: a => `<path d="M40 7 L74 70 H6 Z" ${a}/>` },
+  square:    { hint: 'it has four sides, all the same size',      el: a => `<rect x="9" y="9" width="62" height="62" rx="6" ${a}/>` },
+  heart:     { hint: 'it looks like a love heart',               el: a => `<path d="M40 70 C 10 50, 4 30, 16 18 C 26 8, 38 14, 40 24 C 42 14, 54 8, 64 18 C 76 30, 70 50, 40 70 Z" ${a}/>` },
+  rectangle: { hint: 'it has four sides, two long and two short', el: a => `<rect x="3" y="20" width="74" height="40" rx="5" ${a}/>` },
+  oval:      { hint: 'it is round and stretched, like an egg',    el: a => `<ellipse cx="40" cy="40" rx="37" ry="22" ${a}/>` },
+  diamond:   { hint: 'it stands up on one pointy corner',        el: a => `<path d="M40 3 L70 40 L40 77 L10 40 Z" ${a}/>` },
+  star:      { hint: 'it has five points',                       el: a => `<polygon points="${starPts}" ${a}/>` },
+};
+const EASY = ['circle', 'triangle', 'square', 'heart'];
+const LOOK = { square: ['rectangle', 'diamond'], rectangle: ['square'], circle: ['oval'], oval: ['circle'], diamond: ['square', 'triangle'], triangle: ['diamond'], star: ['heart'], heart: ['star'] };
+const COLORS = ['#E8B33B', '#D9774F', '#8E6A9E', '#E98C8C', '#7FA6C4'];
+const SOLID = c => `fill="${c}" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"`;
+const SLOT = 'fill="#245654" stroke="#FFFBF4" stroke-width="4" stroke-dasharray="2 9" stroke-linecap="round" stroke-linejoin="round"';
+const NEED = 'fill="#DCEBEA" stroke="#2F6D6A" stroke-width="5" stroke-dasharray="2 10" stroke-linecap="round" stroke-linejoin="round"';
+const shapeSvg = (n, attrs, cls = '') => `<svg viewBox="0 0 80 80" class="${cls}" aria-hidden="true">${SHAPES[n].el(attrs)}</svg>`;
+const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(x => x[1]);
+const an = n => (/^[aeiou]/.test(n) ? 'an ' : 'a ') + n;
+const cap = s => s[0].toUpperCase() + s.slice(1);
+function toStage(cx, cy) { const sr = stage.getBoundingClientRect(), k = sr.width / 1180; return { x: (cx - sr.left) / k, y: (cy - sr.top) / k }; }
+const train = $('#train'), ghost = $('#ghost');
+const choo = {
+  chug: () => [0, 1, 2, 3, 4].forEach(i => tone(120 + (i % 2) * 30, .1, 'triangle', .1, i * .22)),
+  toot: () => { tone(587, .45, 'sine', .09); tone(740, .45, 'sine', .07); },
+};
+
+const Game = {
+  wagons: [], wrongs: 0, moving: false, flying: false, ptr: null, dragged: false, last: '',
+  winLine: 'All aboard! You found every shape. Toot toot!',
+
+  active() { return this.wagons.find(w => !w.filled); },
+  tileFor(n) { return $(`#tiles [data-shape="${n}"]`); },
+
+  prompt() { const w = this.active(); if (w) say(`This wagon needs ${an(w.shape)}!`); },
+
+  newRound() {
+    S.busy = false; this.wrongs = 0; this.flying = false; this.ptr = null; this.ghostOff(); handHide();
+    let targets, tiles, key;
+    do {
+      if (!S.level) {
+        targets = shuffle(EASY).slice(0, 3);
+        tiles = [...targets.slice(1), EASY.find(n => !targets.includes(n))];
+      } else {
+        targets = shuffle(Object.keys(SHAPES)).slice(0, 3);
+        const set = new Set(targets);
+        shuffle(targets.flatMap(t => LOOK[t])).forEach(n => { if (set.size < 5) set.add(n); });
+        shuffle(Object.keys(SHAPES)).forEach(n => { if (set.size < 5) set.add(n); });
+        tiles = [...set];
+      }
+      key = targets.join();
+    } while (key === this.last);
+    this.last = key;
+    const colors = shuffle(COLORS);
+    this.wagons = targets.map((shape, i) => ({ shape, filled: !S.level && i === 0, color: colors[4] }));
+    this.renderWagons(); this.renderTiles(shuffle(tiles), colors); this.highlight();
+    // roll in from the left
+    train.className = ''; train.style.transform = 'translateX(-1150px)'; void train.offsetWidth;
+    train.className = 'come rolling'; train.style.transform = 'translateX(0)';
+    this.moving = true; choo.chug(); this.steam(4);
+    later(() => { train.classList.remove('rolling'); this.moving = false; }, 1300);
+    later(() => { if (!S.demo) this.prompt(); }, 1300);
+    armHint();
+  },
+
+  renderWagons() {
+    const box = $('#wagons'); box.innerHTML = '';
+    this.wagons.forEach((w, i) => {
+      const d = document.createElement('div');
+      d.className = 'wagon'; d.style.left = 60 + i * 220 + 'px';
+      d.innerHTML = w.filled ? shapeSvg(w.shape, SOLID(w.color)) : shapeSvg(w.shape, SLOT);
+      d.setAttribute('role', 'img'); d.setAttribute('aria-label', w.filled ? `${w.shape}, already placed` : `Empty ${w.shape} space`);
+      d.onclick = () => { if (!w.filled && !S.demo) say(`This wagon needs ${an(w.shape)}!`); };
+      w.el = d; box.appendChild(d);
+    });
+  },
+
+  highlight() {
+    const a = this.active();
+    this.wagons.forEach(w => w.el.classList.toggle('next', w === a));
+    $('#need').innerHTML = a ? `<g transform="translate(662 132) scale(.7)">${SHAPES[a.shape].el(NEED)}</g>` : '';
+  },
+
+  renderTiles(names, colors) {
+    const tray = $('#tiles'); tray.innerHTML = ''; tray.classList.remove('locked');
+    names.forEach((n, i) => {
+      const b = document.createElement('button');
+      b.className = 'tt shape'; b.dataset.shape = n; b.dataset.c = colors[i];
+      b.setAttribute('aria-label', cap(n));
+      b.innerHTML = shapeSvg(n, SOLID(colors[i]));
+      this.bindTile(b); tray.appendChild(b);
+    });
+  },
+
+  canPlay() { return !S.busy && !S.demo && !this.moving && !this.flying; },
+
+  bindTile(b) {
+    b.addEventListener('pointerdown', e => {
+      if (!this.canPlay() || this.ptr) return;
+      e.preventDefault(); try { b.setPointerCapture(e.pointerId); } catch (_) {}
+      this.ptr = { id: e.pointerId, b, x0: e.clientX, y0: e.clientY, drag: false };
+    });
+    b.addEventListener('pointermove', e => {
+      const p = this.ptr; if (!p || p.b !== b || p.id !== e.pointerId) return;
+      if (!p.drag && Math.hypot(e.clientX - p.x0, e.clientY - p.y0) > 12) {
+        if (!this.canPlay()) { this.ptr = null; return; }
+        p.drag = true; b.classList.add('sel'); handHide();
+        this.ghostOn(b.dataset.shape, b.dataset.c); say(cap(b.dataset.shape));
+      }
+      if (p.drag) { const s = toStage(e.clientX, e.clientY); this.ghostAt(s.x, s.y); }
+    });
+    const end = (e, cancel) => {
+      const p = this.ptr; if (!p || p.b !== b || p.id !== e.pointerId) return;
+      this.ptr = null; b.classList.remove('sel');
+      if (!p.drag) return;                          // a plain tap is handled by 'click'
+      this.dragged = true; setTimeout(() => { this.dragged = false; }, 0);
+      const s = toStage(e.clientX, e.clientY), w = !cancel && this.wagonAt(s.x, s.y);
+      if (w && !w.filled && this.canPlay()) this.attempt(w, b, true);
+      else this.ghostHome(b);
+    };
+    b.addEventListener('pointerup', e => end(e, false));
+    b.addEventListener('pointercancel', e => end(e, true));
+    b.addEventListener('click', () => {
+      if (this.dragged || !this.canPlay()) return;
+      this.attempt(this.active(), b, false);
+    });
+  },
+
+  wagonAt(x, y) {
+    return this.wagons.find(w => { const c = centerOf(w.el); return Math.abs(x - c.x) < 125 && Math.abs(y - c.y) < 100; });
+  },
+
+  ghostOn(n, c) { ghost.innerHTML = shapeSvg(n, SOLID(c)); ghost.className = 'on'; ghost.style.transition = ''; },
+  ghostAt(x, y) { ghost.style.left = x + 'px'; ghost.style.top = y + 'px'; },
+  ghostOff() { ghost.className = ''; ghost.style.transition = ''; },
+  ghostHome(b) {
+    const c = centerOf(b); this.flying = true;
+    ghost.classList.add('fly'); this.ghostAt(c.x, c.y);
+    later(() => { this.ghostOff(); this.flying = false; }, 420);
+  },
+
+  attempt(w, b, dragged, slow) {
+    if (!w || w.filled) return;
+    const n = b.dataset.shape; handHide();
+    if (n !== w.shape) return this.wrong(w, b, dragged);
+    this.flying = true;
+    const from = centerOf(b), to = centerOf(w.el);
+    if (!dragged) { this.ghostOn(n, b.dataset.c); this.ghostAt(from.x, from.y); void ghost.offsetWidth; }
+    ghost.classList.add('fly'); if (slow) ghost.style.transition = 'left .7s ease-in-out, top .7s ease-in-out';
+    this.ghostAt(to.x, to.y);
+    b.classList.remove('right'); void b.offsetWidth; b.classList.add('right');
+    later(() => b.classList.remove('right'), 700);
+    later(() => { this.ghostOff(); this.flying = false; this.fill(w, b.dataset.c); }, slow ? 720 : 420);
+  },
+
+  fill(w, color) {
+    if (w.filled || !this.wagons.includes(w) || S.busy) return;
+    w.filled = true; w.color = color; this.wrongs = 0;
+    w.el.innerHTML = shapeSvg(w.shape, SOLID(color), 'snap');
+    w.el.setAttribute('aria-label', `${w.shape}, placed`);
+    sfx.pop(4); sfx.yes();
+    const r = $('#rab'); r.classList.remove('happy', 'think'); void r.getBBox(); r.classList.add('happy');
+    this.highlight();
+    if (!this.active()) {
+      S.busy = true; $('#tiles').classList.add('locked'); clearTimeout(S.hintTimer);
+      say(`Yes, ${an(w.shape)}! All aboard! Toot toot!`);
+      later(() => this.chugOff(), 500);
+      if (!S.demo) roundDone();
+    } else {
+      say(`Yes! ${cap(an(w.shape))}!`);
+      later(() => { if (!S.demo && !S.busy) this.prompt(); }, 1500);
+      armHint();
+    }
+  },
+
+  wrong(w, b, dragged) {
+    if (dragged) this.ghostHome(b);
+    b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx.no();
+    w.el.classList.remove('shake'); void w.el.offsetWidth; w.el.classList.add('shake');
+    const r = $('#rab'); r.classList.remove('happy', 'think'); void r.getBBox(); r.classList.add('think');
+    this.wrongs++;
+    const n = b.dataset.shape;
+    say(this.wrongs >= 2 ? `That's ${an(n)}. Let's find the ${w.shape} together. Look, here it is!`
+                         : `That's ${an(n)}. This wagon needs ${an(w.shape)}. ${cap(SHAPES[w.shape].hint)}.`);
+    if (this.wrongs >= 2) { const t = this.tileFor(w.shape); if (t) { pointAt(t); hand.classList.add('nudge'); } }
+    armHint();
+  },
+
+  chugOff() {
+    train.className = 'go rolling'; train.style.transform = 'translateX(1250px)';
+    choo.toot(); later(() => choo.chug(), 300); this.steam(5);
+  },
+
+  steam(k) {
+    for (let i = 0; i < k; i++) later(() => {
+      if (!$('#play').classList.contains('on')) return;
+      const c = centerOf($('#chim')), s = document.createElement('span');
+      s.className = 'steam'; s.style.left = c.x + 'px'; s.style.top = c.y + 'px';
+      $('#play').appendChild(s); setTimeout(() => s.remove(), 1500);
+    }, i * 260);
+  },
+
+  autoSolve() {                                   // test helper
+    if (S.busy && !S.demo) return;
+    this.wagons.filter(w => !w.filled).forEach(w => { const t = this.tileFor(w.shape); this.fill(w, t ? t.dataset.c : COLORS[0]); });
+  },
+
+  wrongTarget() {                                 // test helper: a tile that is not the needed shape
+    const w = this.active(); return w ? $$('#tiles .tt').find(t => t.dataset.shape !== w.shape) : null;
+  },
+
+  hintTarget() { const w = this.active(); return w ? this.tileFor(w.shape) : null; },
+
+  demo(done) {
+    const todo = this.wagons.filter(w => !w.filled);
+    let t = 1400;
+    todo.forEach((w, i) => {
+      const tile = this.tileFor(w.shape);
+      later(() => { say(i ? `Now this wagon needs ${an(w.shape)}. I can just tap it!` : `Watch me! This wagon needs ${an(w.shape)}.`); pointAt(w.el); }, t);
+      later(() => { pointAt(tile); }, t + 2600);
+      later(() => { handTap(); say(`${cap(w.shape)}!`); }, t + 3300);
+      if (i === 0) {                              // first one: show a drag
+        later(() => { const c = centerOf(tile); this.ghostOn(w.shape, tile.dataset.c); this.ghostAt(c.x, c.y); pointAt(w.el); this.attempt(w, tile, true, true); }, t + 3900);
+      } else later(() => this.attempt(w, tile, false), t + 3700);
+      t += 6200;
+    });
+    later(() => { say('Now it’s your turn!'); later(done, 1600); }, t);
+  },
+};
+</script>
+</body>
+</html>

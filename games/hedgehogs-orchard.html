@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Hedgehog's Orchard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@600;700;800&display=swap">
+<style>
+/* ===== Shared PlayPrompt shell: palette ===== */
+:root{
+  --ink:#2A2433; --paper:#FFFBF4; --tray:#F6EEE2; --teal:#2F6D6A; --sun:#E8B33B;
+  --clay:#D9774F; --plum:#6B4A6E; --muted:#4A5463; --line:#E4D9CC;
+  --scene:#F6E7D3;            /* per-game world background */
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--scene);touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',system-ui,sans-serif;color:var(--ink)}
+button{font:inherit;color:inherit}
+#stage{position:absolute;left:50%;top:50%;width:1180px;height:820px;transform-origin:center;overflow:hidden;background:var(--scene);border-radius:24px}
+.screen{position:absolute;inset:0;display:none}
+.screen.on{display:block}
+.display{font-family:'Baloo 2','Nunito',sans-serif;font-weight:800}
+
+/* top bar */
+#topbar{position:absolute;left:0;top:0;width:1180px;height:104px;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;z-index:20;pointer-events:none}
+#topbar>*{pointer-events:auto}
+.ico{width:32px;height:32px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.btn{position:relative;width:72px;height:72px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink);transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.btn .ring{position:absolute;inset:-9px;width:84px;height:84px;transform:rotate(-90deg);pointer-events:none}
+.btn .ring circle{fill:none;stroke:var(--teal);stroke-width:6;stroke-linecap:round;stroke-dasharray:245;stroke-dashoffset:245}
+.btn.holding .ring circle{transition:stroke-dashoffset .9s linear;stroke-dashoffset:0}
+.btn.hidden{visibility:hidden}
+.btn .slash{display:none}
+.btn.muted .slash{display:inline}
+.btn.muted .wave{display:none}
+#stars{display:flex;gap:8px}
+#stars svg{width:46px;height:46px;transition:transform .3s}
+#stars svg.pop{animation:starpop .6s}
+@keyframes starpop{0%{transform:scale(1)}40%{transform:scale(1.5) rotate(15deg)}100%{transform:scale(1)}}
+
+/* tray */
+.tray{position:absolute;left:0;bottom:0;width:1180px;height:150px;background:var(--paper);border-top:3px solid var(--ink);border-radius:36px 36px 0 0;display:flex;align-items:center;justify-content:center;gap:28px;z-index:10}
+.tt{width:100px;height:100px;border-radius:30px;border:3px solid var(--ink);background:var(--tray);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;padding:0;cursor:pointer;transition:transform .08s,outline-color .2s}
+.tt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.sel{outline:5px solid var(--teal);outline-offset:5px}
+.tt.right{background:#CFE6D6;outline:5px solid var(--teal);outline-offset:5px;animation:bounce .5s}
+.tt.wrong{animation:wobble .45s}
+@keyframes wobble{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}
+.tray.locked .tt{pointer-events:none}
+
+/* hand pointer (hint + demo) */
+#hand{position:absolute;width:76px;height:76px;z-index:30;pointer-events:none;opacity:0;transition:left .7s ease-in-out,top .7s ease-in-out,opacity .3s}
+#hand.on{opacity:1}
+#hand.tap svg{animation:tap .35s}
+#hand.nudge svg{animation:nudge 1s infinite}
+@keyframes tap{50%{transform:scale(.82) translateY(6px)}}
+@keyframes nudge{50%{transform:translateY(-14px)}}
+
+/* ===== Home (start) screen ===== */
+#home{background:var(--scene)}
+.home-main{position:absolute;left:0;top:104px;width:1180px;height:566px;padding:28px 40px 24px;display:grid;grid-template-columns:480px minmax(0,1fr);gap:40px}
+.hero{position:relative;border-radius:32px;overflow:hidden;border:3px solid var(--ink);height:100%}
+.hero svg{display:block;width:100%;height:100%}
+.home-copy{display:flex;flex-direction:column;gap:18px;min-width:0}
+.lbl{font-size:13px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.home-copy h1{margin:0;font-size:52px;line-height:1.02}
+.speak{display:flex;align-items:center;gap:14px}
+.speak button{flex:none;width:56px;height:56px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 3px 0 var(--ink)}
+.speak p{margin:0;font-size:21px;line-height:1.35;font-weight:700;color:#3A3346}
+.steps{display:flex;gap:14px}
+.step{flex:1;min-width:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
+.sn{position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:15px}
+.gest{width:80px;height:80px;border-radius:50%;background:var(--tray);display:grid;place-items:center}
+.gest svg{width:46px;height:46px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.step b{font-size:15px;font-weight:800;text-align:center;line-height:1.2}
+.grownup{margin-top:auto;background:var(--paper);border:2px dashed #B9AC9C;border-radius:16px;padding:12px 18px;display:flex;flex-direction:column;gap:4px}
+.grownup .row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.grownup .row span:last-child{font-size:15px;font-weight:700;color:#3A3346}
+.grownup .tip{font-size:14px;color:var(--muted);font-weight:600}
+.home-tray{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:0 60px;gap:0}
+.demo-btn{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.play-btn{width:120px;height:120px;border-radius:50%;border:3px solid var(--ink);background:var(--teal);display:grid;place-items:center;margin-top:-44px;box-shadow:0 6px 0 var(--ink);cursor:pointer;padding:0;animation:breathe 2.4s ease-in-out infinite}
+.play-btn:active{transform:translateY(4px);box-shadow:0 2px 0 var(--ink)}
+@keyframes breathe{50%{transform:scale(1.06)}}
+.lvl{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:flex;align-items:center;justify-content:center;gap:6px;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
+.lvl span{width:16px;height:16px;border-radius:50%;background:var(--ink)}
+.lvl[aria-pressed="true"]{outline:5px solid var(--teal);outline-offset:5px;background:#CFE6D6}
+.side{display:flex;align-items:center;gap:12px}
+.side.r{justify-content:flex-end}
+.wave{transform-box:fill-box;transform-origin:50% 90%;animation:wave 2.2s ease-in-out infinite}
+@keyframes wave{0%,100%{transform:rotate(0)}20%{transform:rotate(-5deg) translateY(-6px)}40%{transform:rotate(4deg)}60%{transform:rotate(-3deg) translateY(-4px)}}
+.floaty{animation:floaty 3s ease-in-out infinite}
+@keyframes floaty{50%{transform:translateY(-8px)}}
+
+/* ===== Win screen ===== */
+#win{background:rgba(42,36,51,.55);z-index:40}
+.win-card{position:absolute;left:50%;top:50%;width:640px;transform:translate(-50%,-50%);background:var(--paper);border:3px solid var(--ink);border-radius:40px;box-shadow:0 8px 0 var(--ink);padding:36px 40px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+.win-card h2{margin:0;font-size:56px;line-height:1}
+.win-stars{display:flex;gap:14px}
+.win-stars svg{width:96px;height:96px;opacity:0;transform:scale(.3)}
+#win.on .win-stars svg{animation:winstar .5s forwards}
+#win.on .win-stars svg:nth-child(2){animation-delay:.25s}
+#win.on .win-stars svg:nth-child(3){animation-delay:.5s}
+@keyframes winstar{to{opacity:1;transform:scale(1)}}
+.win-row{display:flex;gap:28px;align-items:center}
+.confetti{position:absolute;width:14px;height:14px;border-radius:3px;border:2px solid var(--ink);top:-20px;animation:fall linear forwards;z-index:41}
+@keyframes fall{to{transform:translateY(880px) rotate(540deg)}}
+
+/* ===== Game-specific: Hedgehog's Orchard ===== */
+.hog{transform-box:fill-box;transform-origin:50% 100%}
+.hog.happy{animation:hop .5s 3}
+@keyframes hop{50%{transform:translateY(-34px)}}
+.hog.think{animation:think 1s}
+@keyframes think{25%{transform:rotate(-4deg)}75%{transform:rotate(4deg)}}
+.num{flex-direction:column;display:flex;align-items:center;justify-content:center;gap:4px;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:46px;line-height:1;border-radius:50%}
+.dots{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;max-width:64px}
+.dots span{width:8px;height:8px;border-radius:50%;background:var(--clay)}
+.badge{position:absolute;width:40px;height:40px;border-radius:50%;background:var(--paper);border:3px solid var(--teal);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:22px;line-height:1;z-index:6;transform:scale(0);transition:transform .25s cubic-bezier(.3,1.6,.6,1)}
+.badge.on{transform:scale(1)}
+#apples{position:absolute;left:820px;top:330px;width:260px;height:180px;z-index:5}
+.apple{position:absolute;width:52px;height:56px;padding:0;border:0;background:none;cursor:pointer;transform:translateY(-260px) scale(.6);opacity:0;transition:transform .5s cubic-bezier(.3,1.3,.6,1),opacity .2s}
+.apple.in{transform:none;opacity:1}
+.apple.counted svg circle{fill:#E99A78}
+#bubble{position:absolute;left:640px;top:214px;width:140px;height:140px;border-radius:50%;background:var(--paper);border:3px solid var(--ink);display:flex;align-items:center;justify-content:center;gap:4px;transition:transform .3s}
+#bubble .q{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:54px;line-height:1;color:var(--plum)}
+#bubble.got{transform:scale(1.12)}
+</style>
+</head>
+<body>
+
+<!-- Reusable drawings -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke="#2A2433" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="handpt" viewBox="0 0 64 64"><path d="M26 34V12a5 5 0 0 1 10 0v16l12 3a6 6 0 0 1 4.5 7l-2.5 13a8 8 0 0 1-8 6.5H31a8 8 0 0 1-6.4-3.2L15 44a5 5 0 0 1 7-7z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="hedgehog" viewBox="0 0 210 160">
+      <polygon points="20,120 10,100 28,92 14,72 36,68 30,46 52,50 52,26 72,36 80,14 94,30 110,12 116,32 136,20 136,42 156,36 150,58 172,60 160,78 178,88 162,98 170,120" fill="#6F4F4A" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="70" cy="146" rx="18" ry="10" fill="#6F4F4A" stroke="#2A2433" stroke-width="3"/>
+      <ellipse cx="140" cy="146" rx="18" ry="10" fill="#6F4F4A" stroke="#2A2433" stroke-width="3"/>
+      <path d="M30 120 Q 60 140 120 140 Q 170 140 186 118 Q 200 104 192 96 Q 180 74 150 76 Q 120 80 30 120 Z" fill="#F4CDB8" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="196" cy="100" r="7" fill="#2A2433"/>
+      <circle cx="158" cy="94" r="5.5" fill="#2A2433"/>
+      <circle cx="146" cy="112" r="9" fill="#E9967E"/>
+      <path d="M168 116 Q 176 122 184 114" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="apple" viewBox="0 0 48 52"><circle cx="24" cy="31" r="19" fill="#D9774F" stroke="#2A2433" stroke-width="3"/><path d="M24 12c0-4 2-7 5-8" fill="none" stroke="#2A2433" stroke-width="3" stroke-linecap="round"/><path d="M27 10c4-4 10-3 11 0-4 3-9 2-11 0z" fill="#6E9773" stroke="#2A2433" stroke-width="2.4"/><ellipse cx="17" cy="25" rx="4" ry="6" fill="#F0A584"/></symbol>
+    <symbol id="basket" viewBox="0 0 260 120">
+      <path d="M20 20 H240 L215 108 Q 212 116 204 116 H56 Q 48 116 45 108 Z" fill="#DDA15E" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M34 54 H226 M44 84 H216" stroke="#B5793F" stroke-width="5" stroke-linecap="round"/>
+      <rect x="12" y="12" width="236" height="22" rx="11" fill="#C68B4C" stroke="#2A2433" stroke-width="3"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div id="stage">
+
+  <!-- shared top bar -->
+  <div id="topbar">
+    <button class="btn hidden" id="homeBtn" aria-label="Home, press and hold">
+      <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
+    </button>
+    <div id="stars" role="img" aria-label="0 of 3 stars"></div>
+    <button class="btn" id="soundBtn" aria-label="Sound on">
+      <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
+    </button>
+  </div>
+
+  <!-- ===== HOME ===== -->
+  <section id="home" class="screen on" aria-label="Start screen">
+    <div class="home-main">
+      <div class="hero">
+        <svg viewBox="0 0 480 514" aria-hidden="true">
+          <rect width="480" height="514" fill="#F6E7D3"/>
+          <circle cx="400" cy="80" r="40" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
+          <path d="M-20 360 C 120 250 300 250 420 360 Z" fill="#C9D8A8" stroke="#2A2433" stroke-width="3"/>
+          <path d="M200 380 C 340 290 460 290 520 380 Z" fill="#B3C98E" stroke="#2A2433" stroke-width="3"/>
+          <path d="M-10 370 Q 240 345 490 370 V520 H-10 Z" fill="#93B98C" stroke="#2A2433" stroke-width="3"/>
+          <rect x="108" y="190" width="26" height="200" rx="9" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/>
+          <circle cx="121" cy="160" r="104" fill="#6E9773" stroke="#2A2433" stroke-width="3"/>
+          <g class="floaty"><circle cx="80" cy="124" r="17" fill="#D9774F" stroke="#2A2433" stroke-width="3"/><circle cx="162" cy="108" r="17" fill="#D9774F" stroke="#2A2433" stroke-width="3"/><circle cx="184" cy="190" r="17" fill="#D9774F" stroke="#2A2433" stroke-width="3"/><circle cx="92" cy="206" r="17" fill="#D9774F" stroke="#2A2433" stroke-width="3"/></g>
+          <use href="#hedgehog" class="wave" x="130" y="300" width="220" height="168"/>
+          <use href="#basket" x="300" y="380" width="160" height="74"/>
+          <use href="#apple" x="330" y="350" width="34" height="37"/><use href="#apple" x="362" y="344" width="34" height="37"/><use href="#apple" x="394" y="350" width="34" height="37"/>
+        </svg>
+      </div>
+      <div class="home-copy">
+        <span class="lbl">Counting · 1 to 5</span>
+        <h1 class="display">Hedgehog's Orchard</h1>
+        <div class="speak">
+          <button id="storyBtn" aria-label="Hear the story"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
+          <p id="story">Hedgehog is picking apples for supper. Can you count how many are in the basket?</p>
+        </div>
+        <div class="steps">
+          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span><b>Listen to Hedgehog</b></div>
+          <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 48 52" aria-hidden="true"><circle cx="24" cy="31" r="17"/><path d="M24 14c0-4 2-7 5-8"/></svg></span><b>Tap each apple to count</b></div>
+          <div class="step"><span class="sn">3</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9l2-1.5V16"/></svg></span><b>Tap the number</b></div>
+        </div>
+        <div class="grownup">
+          <div class="row"><span class="lbl" style="font-size:11px">Grown-up</span><span>Counting objects and matching to numerals · about 3 min · 5 rounds</span></div>
+          <span class="tip">Ask: “Can you touch each apple once as you count?” Pointing to each object builds one-to-one counting.</span>
+        </div>
+      </div>
+    </div>
+    <div class="tray home-tray">
+      <div class="side">
+        <button class="demo-btn" id="demoBtn" aria-label="Show me how"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:40px;height:40px"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></button>
+        <span class="lbl" style="font-size:12px">Show me how</span>
+      </div>
+      <button class="play-btn" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:52px;height:52px;margin-left:6px"><path d="M7 4.5l13 7.5-13 7.5z" fill="#FFFBF4" stroke="#2A2433" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+      <div class="side r">
+        <span class="lbl" style="font-size:12px;text-align:right">Level</span>
+        <button class="lvl" data-level="0" aria-pressed="true" aria-label="Easy level"><span></span></button>
+        <button class="lvl" data-level="1" aria-pressed="false" aria-label="Harder level"><span></span><span></span></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== PLAY ===== -->
+  <section id="play" class="screen" aria-label="Game">
+    <svg viewBox="0 0 1180 820" aria-hidden="true" style="position:absolute;left:0;top:0;width:1180px;height:820px">
+      <circle cx="1040" cy="200" r="58" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
+      <g class="floaty"><path d="M300 190 a26 26 0 0 1 40 -22 a32 32 0 0 1 58 6 a22 22 0 0 1 10 40 H312 a22 22 0 0 1 -12 -24 z" fill="#FFFBF4" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></g>
+      <path d="M-40 560 C 180 370 520 370 760 560 Z" fill="#C9D8A8" stroke="#2A2433" stroke-width="3"/>
+      <path d="M480 590 C 720 410 1060 410 1240 590 Z" fill="#B3C98E" stroke="#2A2433" stroke-width="3"/>
+      <rect x="1060" y="400" width="16" height="170" rx="6" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="1068" cy="380" r="54" fill="#7FA57F" stroke="#2A2433" stroke-width="3"/>
+      <path d="M-10 570 Q 590 530 1190 570 V830 H-10 Z" fill="#93B98C" stroke="#2A2433" stroke-width="3"/>
+      <rect x="198" y="320" width="30" height="270" rx="10" fill="#9C6B4E" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="213" cy="280" r="135" fill="#6E9773" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="160" cy="232" r="21" fill="#D9774F" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="268" cy="208" r="21" fill="#D9774F" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="296" cy="314" r="21" fill="#D9774F" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="176" cy="338" r="21" fill="#D9774F" stroke="#2A2433" stroke-width="3"/>
+    </svg>
+    <svg viewBox="0 0 210 160" role="img" aria-label="Hedgehog" style="position:absolute;left:440px;top:404px;width:280px;height:213px;overflow:visible"><use id="hog" class="hog" href="#hedgehog" width="210" height="160"/></svg>
+    <div id="bubble" aria-live="polite"><svg viewBox="0 0 48 52" aria-hidden="true" style="width:54px;height:58px"><use href="#apple"/></svg><span class="q" id="bubbleQ">?</span></div>
+    <span style="position:absolute;left:636px;top:358px;width:26px;height:26px;border-radius:50%;background:#FFFBF4;border:3px solid #2A2433"></span>
+    <span style="position:absolute;left:614px;top:392px;width:14px;height:14px;border-radius:50%;background:#FFFBF4;border:3px solid #2A2433"></span>
+    <div id="apples"></div>
+    <svg viewBox="0 0 260 120" aria-hidden="true" style="position:absolute;left:820px;top:480px;width:260px;height:120px;z-index:6;pointer-events:none"><use href="#basket"/></svg>
+    <div class="tray" id="answers" aria-label="Pick a number"></div>
+  </section>
+
+  <!-- ===== WIN ===== -->
+  <section id="win" class="screen" aria-label="Well done">
+    <div class="win-card">
+      <div class="win-stars" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg></div>
+      <h2 class="display">Yummy, thank you!</h2>
+      <p style="margin:0;font-size:22px;font-weight:700;color:#3A3346">You counted all the apples. Hedgehog has a full basket for supper.</p>
+      <svg viewBox="0 0 210 160" aria-hidden="true" style="width:200px;height:152px;overflow:visible"><use class="hog happy" href="#hedgehog" style="animation-iteration-count:infinite"/></svg>
+      <div class="win-row">
+        <button class="btn" id="winHome" aria-label="Back to start"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg></button>
+        <button class="play-btn" id="againBtn" aria-label="Play again" style="margin-top:0;width:104px;height:104px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:46px;height:46px;fill:none;stroke:#FFFBF4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="hand" aria-hidden="true"><svg viewBox="0 0 64 64" width="76" height="76"><use href="#handpt"/></svg></div>
+</div>
+
+<script>
+/* ================= Shared PlayPrompt shell ================= */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const stage = $('#stage');
+const S = { level: 0, round: 0, rounds: 5, stars: 0, muted: false, busy: false, demo: false, hintTimer: 0, timers: [] };
+const STAR_AT = [2, 4, 5];                       // rounds completed -> star 1, 2, 3
+
+function fit() {
+  const s = Math.min(innerWidth / 1180, innerHeight / 820);
+  stage.style.transform = `translate(-50%,-50%) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+function later(fn, ms) { const t = setTimeout(fn, ms); S.timers.push(t); return t; }
+function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; clearTimeout(S.hintTimer); }
+
+/* voice */
+function say(text) {
+  if (S.muted || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 0.9; u.pitch = 1.15; u.lang = 'en-US';
+  const v = speechSynthesis.getVoices().find(v => /en(-|_)(US|GB)/.test(v.lang) && /female|samantha|karen|serena|google us/i.test(v.name));
+  if (v) u.voice = v;
+  speechSynthesis.speak(u);
+}
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+
+/* sound effects */
+let AC;
+function tone(f, d = .15, type = 'sine', v = .14, when = 0) {
+  if (S.muted) return;
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const t = AC.currentTime + when, o = AC.createOscillator(), g = AC.createGain();
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(v, t + .01); g.gain.exponentialRampToValueAtTime(.001, t + d);
+    o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .05);
+  } catch (e) {}
+}
+const sfx = {
+  pop: (n = 0) => tone(520 + n * 70, .12, 'triangle'),
+  yes: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, .28, 'triangle', .12, i * .09)),
+  no:  () => { tone(330, .18, 'sine', .1); tone(262, .24, 'sine', .1, .14); },
+  win: () => [523, 659, 784, 659, 784, 1047].forEach((f, i) => tone(f, .3, 'triangle', .12, i * .13)),
+};
+
+/* stars */
+function drawStars() {
+  $('#stars').innerHTML = [0, 1, 2].map(i =>
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#star" fill="${i < S.stars ? '#E8B33B' : '#FFFBF4'}"/></svg>`).join('');
+  $('#stars').setAttribute('aria-label', `${S.stars} of 3 stars`);
+}
+function earnRound() {
+  S.round++;
+  const s = STAR_AT.filter(r => S.round >= r).length;
+  if (s > S.stars) { S.stars = s; drawStars(); $('#stars').children[s - 1].classList.add('pop'); }
+}
+
+/* hand pointer */
+const hand = $('#hand');
+function handTo(x, y, show = true) { hand.style.left = x + 'px'; hand.style.top = y + 'px'; hand.classList.toggle('on', show); }
+function handTap() { hand.classList.remove('tap'); void hand.offsetWidth; hand.classList.add('tap'); }
+function handHide() { hand.classList.remove('on', 'nudge'); }
+function centerOf(el) {                       // element centre in stage coordinates
+  const r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), k = sr.width / 1180;
+  return { x: (r.left + r.width / 2 - sr.left) / k, y: (r.top + r.height / 2 - sr.top) / k };
+}
+function pointAt(el) { const c = centerOf(el); handTo(c.x - 37, c.y - 8); }
+function armHint() {
+  clearTimeout(S.hintTimer);
+  S.hintTimer = setTimeout(() => { if (!S.busy && !S.demo) { const el = Game.hintTarget(); if (el) { pointAt(el); hand.classList.add('nudge'); Game.prompt(); } } }, 9000);
+}
+
+/* screens */
+function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
+
+function goHome() {
+  clearTimers(); handHide(); S.demo = false;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  S.stars = 0; drawStars(); show('home');
+}
+function startGame(demo) {
+  clearTimers(); handHide();
+  S.round = 0; S.stars = 0; S.busy = false; S.demo = !!demo; drawStars();
+  show('play');
+  Game.newRound();
+  if (demo) later(() => Game.demo(() => { S.demo = false; handHide(); later(() => { Game.newRound(); }, 600); }), 400);
+}
+function roundDone() {
+  earnRound(); handHide();
+  if (S.round >= S.rounds) { later(winGame, 1800); }
+  else later(() => Game.newRound(), 1900);
+}
+function winGame() {
+  show('win'); sfx.win(); say(Game.winLine);
+  for (let i = 0; i < 40; i++) {
+    const c = document.createElement('span'); c.className = 'confetti';
+    c.style.left = Math.random() * 1180 + 'px';
+    c.style.background = ['#E8B33B', '#D9774F', '#6E9773', '#6B4A6E', '#7FA6C4'][i % 5];
+    c.style.animationDuration = 1.8 + Math.random() * 1.6 + 's';
+    c.style.animationDelay = Math.random() * .6 + 's';
+    stage.appendChild(c); setTimeout(() => c.remove(), 4200);
+  }
+}
+
+/* top bar controls */
+(function holdHome() {
+  const b = $('#homeBtn'); let t;
+  const start = e => { e.preventDefault(); b.classList.add('holding'); t = setTimeout(() => { b.classList.remove('holding'); goHome(); }, 900); };
+  const stop = () => { clearTimeout(t); b.classList.remove('holding'); };
+  b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') goHome(); });
+})();
+$('#soundBtn').addEventListener('click', () => {
+  if ($('#home').classList.contains('on')) {
+    S.muted = !S.muted;
+    $('#soundBtn').classList.toggle('muted', S.muted);
+    $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off' : 'Sound on');
+    if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+  } else Game.prompt();
+});
+$('#storyBtn').addEventListener('click', () => say($('#story').textContent));
+$$('.lvl').forEach(b => b.addEventListener('click', () => {
+  S.level = +b.dataset.level; sfx.pop(S.level);
+  $$('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  say(S.level ? 'Harder! Let’s go.' : 'Easy. Nice and gentle.');
+}));
+$('#playBtn').addEventListener('click', () => { sfx.pop(); startGame(false); });
+$('#demoBtn').addEventListener('click', () => { sfx.pop(); startGame(true); });
+$('#againBtn').addEventListener('click', () => startGame(false));
+$('#winHome').addEventListener('click', goHome);
+drawStars();
+
+/* ================= Game: Hedgehog's Orchard ================= */
+const WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+
+const Game = {
+  n: 0, counted: 0, options: [], last: 0,
+  winLine: 'Yummy, thank you! You counted all the apples!',
+
+  prompt() { say(this.counted ? `How many apples? Tap the number.` : `How many apples are in the basket?`); },
+
+  newRound() {
+    S.busy = false;
+    const lo = S.level ? 4 : 1, hi = S.level ? 9 : 5;
+    do { this.n = rand(lo, hi); } while (this.n === this.last);
+    this.last = this.n; this.counted = 0;
+    // answer choices: easy 1..5, harder 5 consecutive numbers that include n
+    if (S.level) { const start = Math.max(1, Math.min(this.n - rand(0, 4), 10 - 4)); this.options = [0, 1, 2, 3, 4].map(i => start + i); }
+    else this.options = [1, 2, 3, 4, 5];
+    $('#bubbleQ').textContent = '?'; $('#bubble').classList.remove('got');
+    this.renderApples(); this.renderAnswers();
+    later(() => this.prompt(), 500 + this.n * 120);
+    armHint();
+  },
+
+  renderApples() {
+    const box = $('#apples'); box.innerHTML = '';
+    const perRow = this.n > 5 ? Math.ceil(this.n / 2) : this.n;
+    for (let i = 0; i < this.n; i++) {
+      const row = this.n > 5 && i >= perRow ? 1 : 0, col = row ? i - perRow : i;
+      const inRow = row ? this.n - perRow : perRow;
+      const x = 130 - (inRow * 46) / 2 + col * 46 - 3, y = this.n > 5 ? 96 + row * 34 - 34 : 96;
+      const b = document.createElement('button');
+      b.className = 'apple'; b.style.left = x + 'px'; b.style.top = y + 'px';
+      b.style.zIndex = 2 + row;
+      b.setAttribute('aria-label', 'Apple');
+      b.innerHTML = '<svg viewBox="0 0 48 52" width="52" height="56" aria-hidden="true"><use href="#apple"/></svg>';
+      const badge = document.createElement('span'); badge.className = 'badge';
+      badge.style.left = x + 6 + 'px'; badge.style.top = y - 40 + 'px';
+      b.onclick = () => this.countApple(b, badge);
+      box.append(b, badge);
+      later(() => { b.classList.add('in'); sfx.pop(i); }, 150 + i * 120);
+    }
+  },
+
+  countApple(b, badge) {
+    if (S.busy && !S.demo) return;
+    if (b.classList.contains('counted')) { say(WORDS[+badge.textContent]); return; }
+    this.counted++;
+    b.classList.add('counted'); badge.textContent = this.counted; badge.classList.add('on');
+    sfx.pop(this.counted); say(WORDS[this.counted]);
+    armHint();
+  },
+
+  renderAnswers() {
+    const tray = $('#answers'); tray.innerHTML = ''; tray.classList.remove('locked');
+    this.options.forEach(k => {
+      const b = document.createElement('button');
+      b.className = 'tt num'; b.dataset.k = k; b.setAttribute('aria-label', WORDS[k]);
+      b.innerHTML = `${k}<span class="dots">${'<span></span>'.repeat(k)}</span>`;
+      b.onclick = () => this.answer(k, b);
+      tray.appendChild(b);
+    });
+  },
+
+  answer(k, b) {
+    if (S.busy && !S.demo) return;
+    handHide(); armHint();
+    if (k === this.n) {
+      S.busy = true; $('#answers').classList.add('locked');
+      b.classList.add('right'); sfx.yes();
+      $('#bubbleQ').textContent = k; $('#bubble').classList.add('got');
+      this.revealCount();
+      const hog = $('#hog'); hog.classList.remove('happy'); void hog.getBBox(); hog.classList.add('happy');
+      say(`Yes! ${WORDS[k]} ${k === 1 ? 'apple' : 'apples'}!`);
+      clearTimeout(S.hintTimer);
+      if (!S.demo) roundDone();
+    } else {
+      b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx.no();
+      const hog = $('#hog'); hog.classList.remove('think'); void hog.getBBox(); hog.classList.add('think');
+      say(`Hmm, not ${WORDS[k]}. Let’s count together!`);
+      S.busy = true;
+      later(() => this.countTogether(() => { S.busy = false; armHint(); }), 1700);
+    }
+  },
+
+  revealCount() { $$('#apples .badge').forEach((bd, i) => { bd.textContent = i + 1; bd.classList.add('on'); }); $$('#apples .apple').forEach(a => a.classList.add('counted')); },
+
+  countTogether(done) {
+    $$('#apples .badge').forEach(bd => bd.classList.remove('on')); $$('#apples .apple').forEach(a => a.classList.remove('counted'));
+    this.counted = 0;
+    const apples = $$('#apples .apple'), badges = $$('#apples .badge');
+    apples.forEach((a, i) => later(() => { pointAt(a); handTap(); this.counted = i; this.countApple(a, badges[i]); }, i * 900));
+    later(() => { handHide(); say(`So, how many apples?`); done && done(); }, apples.length * 900 + 300);
+  },
+
+  autoSolve() { $(`#answers [data-k="${this.n}"]`).click(); },   // test helper
+
+  hintTarget() { return this.counted >= this.n ? $(`#answers [data-k="${this.n}"]`) : $$('#apples .apple:not(.counted)')[0]; },
+
+  demo(done) {
+    say('Watch me! I tap each apple and count.');
+    const apples = $$('#apples .apple'), badges = $$('#apples .badge');
+    const t0 = 2600;
+    later(() => handTo(560, 700), 0);
+    apples.forEach((a, i) => later(() => { pointAt(a); later(() => { handTap(); this.countApple(a, badges[i]); }, 650); }, t0 + i * 1400));
+    const tEnd = t0 + apples.length * 1400 + 600;
+    later(() => { say(`${WORDS[this.n]} apples. So I tap the number ${WORDS[this.n]}!`); }, tEnd);
+    later(() => { const btn = $(`#answers [data-k="${this.n}"]`); pointAt(btn); later(() => { handTap(); this.answer(this.n, btn); }, 800); }, tEnd + 2600);
+    later(() => { say('Now it’s your turn!'); later(done, 1600); }, tEnd + 6000);
+  },
+};
+</script>
+</body>
+</html>

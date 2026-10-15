@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>Block Buster Buddies</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@700;900&display=swap">
+<style>
+/* Layout: one screen, no scrolling. A guide bar on top (a cloud friend asks for a colour), a soft block wall in the middle
+   that fills the free space, and nothing to steer: the only move is tapping a block. */
+:root{
+  --sky-top:#dcefff; --sky-bottom:#f6fbff; --ground:#bfe3a4; --ground-dark:#93cc75;
+  --panel:#ffffff; --panel-edge:#dbe5f2; --ink:#35405a; --ink-soft:#6b7891;
+  --accent:#ff7eb6; --accent-deep:#e0569a; --star:#ffc531; --star-off:#e4e9f2;
+  --overlay:rgba(246,251,255,.93); --shadow:rgba(53,64,90,.18);
+  --red:#ff6b6b; --red-dark:#d94f4f; --blue:#5aa9ff; --blue-dark:#3d86d9; --yellow:#ffd23f; --yellow-dark:#e0b120; --green:#6dd68a; --green-dark:#4bb26a; --purple:#c08cff; --purple-dark:#9f68e0;
+  --display:'Fredoka','Nunito','Arial Rounded MT Bold',system-ui,sans-serif;
+  --body:'Nunito','Fredoka',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --sky-top:#2b3560; --sky-bottom:#4a5a93; --ground:#4f8c56; --ground-dark:#376b3d;
+    --panel:#2d2f45; --panel-edge:#4a4f6e; --ink:#f1f4ff; --ink-soft:#b9c2db;
+    --accent:#ff8ec2; --accent-deep:#e0569a; --star:#ffd65c; --star-off:#4a4f6e;
+    --overlay:rgba(34,38,60,.93); --shadow:rgba(0,0,0,.45); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --sky-top:#2b3560; --sky-bottom:#4a5a93; --ground:#4f8c56; --ground-dark:#376b3d;
+  --panel:#2d2f45; --panel-edge:#4a4f6e; --ink:#f1f4ff; --ink-soft:#b9c2db;
+  --accent:#ff8ec2; --accent-deep:#e0569a; --star:#ffd65c; --star-off:#4a4f6e;
+  --overlay:rgba(34,38,60,.93); --shadow:rgba(0,0,0,.45); color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{margin:0; background:var(--sky-bottom); color:var(--ink); font-family:var(--body); overflow:hidden; touch-action:manipulation; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent}
+button{font:inherit; color:inherit; cursor:pointer; touch-action:manipulation}
+button:focus-visible{outline:4px solid var(--accent); outline-offset:3px}
+
+#app{height:100%; max-width:600px; margin:0 auto; display:flex; flex-direction:column; gap:8px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); padding-block:8px}
+
+#bar{display:flex; align-items:center; gap:8px; min-height:48px; position:relative; z-index:6}
+.round{width:48px; height:48px; border-radius:50%; border:3px solid var(--panel-edge); background:var(--panel); display:grid; place-items:center; box-shadow:0 3px 0 var(--panel-edge); font-family:var(--display); font-weight:700; font-size:18px}
+.round:active{transform:translateY(3px); box-shadow:none}
+.round svg{width:26px; height:26px; fill:none; stroke:var(--ink); stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
+#stars{flex:1; display:flex; justify-content:center; gap:6px}
+#stars svg{width:30px; height:30px; fill:var(--star-off); stroke:var(--panel-edge); stroke-width:1.5; transition:fill .3s}
+#stars svg.on{fill:var(--star); stroke:#c9931a; animation:starpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes starpop{0%{transform:scale(.4) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}
+
+/* guide: cloud friend + bubble with the colour to pop */
+#guide{display:flex; align-items:center; gap:10px; min-height:84px}
+#cloud{width:96px; flex:none; animation:bob 2.4s ease-in-out infinite; filter:drop-shadow(0 4px 0 var(--shadow))}
+#cloud svg{display:block; width:100%; height:auto}
+#cloud .eyes{transform-origin:60px 36px; animation:blink 4.6s infinite}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+#bubble{flex:1; min-width:0; position:relative; background:var(--panel); border:3px solid var(--panel-edge); border-radius:24px; padding:10px 14px; display:flex; align-items:center; gap:12px; box-shadow:0 4px 0 var(--shadow); font-family:var(--display); font-weight:700; font-size:clamp(20px,5.5vw,28px); line-height:1.1}
+#bubble::before{content:""; position:absolute; left:-14px; top:50%; margin-top:-10px; border:10px solid transparent; border-right-color:var(--panel-edge); border-left:0}
+#bubble.pop{animation:bpop .45s cubic-bezier(.3,1.6,.5,1)}
+@keyframes bpop{from{transform:scale(.6); opacity:0}to{transform:scale(1); opacity:1}}
+#swatch{width:54px; height:54px; flex:none; border-radius:14px; box-shadow:inset 0 -8px 0 rgba(0,0,0,.15), inset 0 4px 0 rgba(255,255,255,.35)}
+#askText{min-width:0; overflow-wrap:anywhere}
+
+/* wall */
+#yard{flex:1; min-height:0; position:relative; border-radius:28px; overflow:hidden; background:linear-gradient(var(--sky-top), var(--sky-bottom) 75%); box-shadow:inset 0 0 0 4px var(--panel-edge)}
+#ground{position:absolute; left:0; right:0; bottom:0; height:12%; background:linear-gradient(var(--ground), var(--ground-dark)); border-radius:50% 50% 0 0 / 60% 60% 0 0}
+#wall{position:absolute; left:50%; bottom:9%; transform:translateX(-50%)}
+.block{position:absolute; border:0; padding:0; border-radius:22%; background:var(--c); box-shadow:inset 0 calc(var(--s) * -0.14) 0 var(--cd), inset 0 calc(var(--s) * 0.07) 0 rgba(255,255,255,.4), 0 3px 0 var(--shadow);
+  transition:top .45s cubic-bezier(.3,1.3,.5,1), left .3s; animation:arrive .5s cubic-bezier(.3,1.5,.5,1) backwards; width:var(--s); height:var(--s); display:grid; place-items:center}
+.block svg{width:70%; height:70%; pointer-events:none}
+.block:active{transform:scale(.92)}
+.block.popping{animation:popout .32s forwards ease-out; pointer-events:none}
+@keyframes popout{40%{transform:scale(1.25)}100%{transform:scale(0); opacity:0}}
+.block.nope{animation:nope .4s ease-in-out}
+@keyframes nope{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px) rotate(-4deg)}75%{transform:translateX(6px) rotate(4deg)}}
+.block.hint{animation:hint 1s ease-in-out infinite}
+@keyframes hint{0%,100%{transform:scale(1)}50%{transform:scale(1.14)}}
+@keyframes arrive{from{transform:translateY(-120px) scale(.6); opacity:0}to{transform:translateY(0) scale(1); opacity:1}}
+.bit{position:absolute; width:12px; height:12px; border-radius:30%; pointer-events:none; animation:bit .7s forwards ease-out}
+@keyframes bit{to{transform:translate(var(--bx),var(--by)) rotate(300deg) scale(.2); opacity:0}}
+.cheer{position:absolute; left:50%; top:40%; transform:translate(-50%,-50%); font-family:var(--display); font-weight:700; font-size:clamp(40px,12vw,72px); color:var(--accent-deep); text-shadow:0 4px 0 var(--panel); pointer-events:none; animation:cheer 1.3s forwards cubic-bezier(.3,1.5,.5,1)}
+@keyframes cheer{0%{transform:translate(-50%,-50%) scale(.2); opacity:0}30%{opacity:1}75%{opacity:1}100%{transform:translate(-50%,-90%) scale(1.1); opacity:0}}
+
+/* overlays */
+.overlay{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; background:var(--overlay); text-align:center; padding:24px; z-index:5}
+.overlay h1{font-family:var(--display); font-weight:700; font-size:clamp(34px,9vw,54px); margin:0; color:var(--accent-deep); text-wrap:balance; line-height:1.05}
+.overlay p{margin:0; font-size:18px; font-weight:700; color:var(--ink-soft); max-width:34ch; line-height:1.4}
+.big{font-family:var(--display); font-weight:700; font-size:28px; color:#fff; border:0; border-radius:40px; padding:18px 40px; background:linear-gradient(var(--accent), var(--accent-deep)); box-shadow:0 7px 0 var(--accent-deep); display:flex; align-items:center; gap:12px}
+.big:active{transform:translateY(7px); box-shadow:none}
+.big svg{width:30px; height:30px; fill:#fff}
+#heroWall{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; width:min(50vw,180px); animation:bob 2s ease-in-out infinite}
+#heroWall span{aspect-ratio:1; border-radius:22%; background:var(--c); box-shadow:inset 0 -6px 0 var(--cd), inset 0 3px 0 rgba(255,255,255,.4)}
+.balloon{position:absolute; bottom:-120px; width:52px; height:66px; border-radius:50% 50% 50% 50% / 45% 45% 55% 55%; animation:rise linear infinite; opacity:.9}
+.balloon::after{content:""; position:absolute; left:50%; top:100%; width:2px; height:60px; background:var(--ink-soft); opacity:.6}
+@keyframes rise{to{transform:translateY(-130vh) rotate(8deg)}}
+#help{text-align:left; align-items:stretch}
+#help .card{background:var(--panel); border:3px solid var(--panel-edge); border-radius:24px; padding:22px; max-width:440px; margin:0 auto; width:100%}
+#help h2{font-family:var(--display); margin:0 0 10px; font-size:26px; color:var(--accent-deep)}
+#help p{color:var(--ink); font-size:17px; margin:0 0 10px}
+#help .big{margin:14px auto 0; font-size:22px; padding:12px 30px}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.01s !important; animation-iteration-count:1 !important; transition-duration:.01s !important}
+  #cloud,#heroWall,.balloon{animation:none !important}
+}
+@media (max-width:540px){ #bar{flex-wrap:wrap} #stars{order:1; flex-basis:100%; gap:4px} #stars svg{width:26px; height:26px} #langBtn{margin-left:auto} }
+@media (max-height:520px){ #guide{min-height:64px} #cloud{width:64px} #bar{min-height:40px} .round{width:40px;height:40px} #swatch{width:40px;height:40px} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="bar">
+    <button class="round" id="helpBtn" aria-label="Help for grown-ups">?</button>
+    <div id="stars" aria-live="polite"></div>
+    <button class="round" id="langBtn" aria-label="Language">EN</button>
+    <button class="round" id="muteBtn" aria-label="Sound on or off" aria-pressed="false">
+      <svg viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l5 6M21 9l-5 6" style="display:none"/></svg>
+    </button>
+  </div>
+
+  <div id="guide">
+    <div id="cloud" aria-hidden="true"><svg viewBox="0 0 120 80">
+      <ellipse cx="60" cy="56" rx="54" ry="20" fill="#fff"/><circle cx="36" cy="44" r="22" fill="#fff"/><circle cx="64" cy="34" r="28" fill="#fff"/><circle cx="92" cy="46" r="20" fill="#fff"/>
+      <g class="eyes"><circle cx="50" cy="40" r="5" fill="#35405a"/><circle cx="74" cy="40" r="5" fill="#35405a"/><circle cx="52" cy="38" r="1.8" fill="#fff"/><circle cx="76" cy="38" r="1.8" fill="#fff"/></g>
+      <circle cx="42" cy="52" r="5" fill="#ffb3c6" opacity=".8"/><circle cx="82" cy="52" r="5" fill="#ffb3c6" opacity=".8"/>
+      <path d="M52 52q10 10 20 0" stroke="#35405a" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </svg></div>
+    <div id="bubble" aria-live="polite"><div id="swatch"></div><div id="askText"></div></div>
+  </div>
+
+  <div id="yard">
+    <div id="ground"></div>
+    <div id="wall"></div>
+  </div>
+</div>
+
+<div class="overlay" id="start">
+  <div id="heroWall" aria-hidden="true"></div>
+  <h1 id="titleText">Block Buster Buddies</h1>
+  <p id="subText">Tap the blocks and pop them all!</p>
+  <button class="big" id="playBtn"><svg viewBox="0 0 24 24"><path d="M7 4l13 8-13 8z"/></svg><span id="playText">Play</span></button>
+</div>
+
+<div class="overlay" id="help" hidden>
+  <div class="card">
+    <h2 id="helpTitle">For grown-ups</h2>
+    <div id="helpBody"></div>
+    <button class="big" id="helpClose">OK</button>
+  </div>
+</div>
+
+<div class="overlay" id="finish" hidden>
+  <h1 id="finishTitle">Hooray!</h1>
+  <p id="finishText">You popped every block. What a buster!</p>
+  <button class="big" id="againBtn"><svg viewBox="0 0 24 24"><path d="M12 5a7 7 0 1 1-6.3 4H3l4-4 4 4H8.2A5 5 0 1 0 12 7z"/></svg><span id="againText">Play again</span></button>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var T = {
+    en:{ title:'Block Buster Buddies', sub:'Tap the blocks and pop them all!', play:'Play', again:'Play again', hooray:'Hooray!',
+         finish:'You popped every block. What a buster!', helpTitle:'For grown-ups', ok:'OK',
+         ask:'Pop the {c} blocks!', any:'Pop any block!', cheers:['Great!','Wow!','Super!','Yay!'],
+         colors:{red:'red',blue:'blue',yellow:'yellow',green:'green',purple:'purple'},
+         help:['The cloud shows a colour. Tap the blocks of that colour to pop them.',
+               'Tapping a different colour just makes the block wiggle. Nothing bad ever happens.',
+               'When a colour is all gone, a star lights up and the cloud asks for a new colour.',
+               'Pop the whole wall and a new wall appears. Three walls finish the game.',
+               'If your child pauses, one of the right blocks starts to pulse as a hint.'], lang:'EN' },
+    it:{ title:'Amici Spacca Blocchi', sub:'Tocca i blocchi e falli scoppiare tutti!', play:'Gioca', again:'Gioca ancora', hooray:'Evviva!',
+         finish:'Hai fatto scoppiare tutti i blocchi. Che forza!', helpTitle:'Per i grandi', ok:'OK',
+         ask:'Scoppia i blocchi {c}!', any:'Scoppia un blocco!', cheers:['Bravo!','Wow!','Super!','Evviva!'],
+         colors:{red:'rossi',blue:'blu',yellow:'gialli',green:'verdi',purple:'viola'},
+         help:['La nuvola mostra un colore. Tocca i blocchi di quel colore per farli scoppiare.',
+               'Se tocchi un altro colore, il blocco fa solo un piccolo balletto. Non succede mai niente di brutto.',
+               'Quando un colore è finito, si accende una stella e la nuvola chiede un nuovo colore.',
+               'Scoppia tutto il muro e ne arriva uno nuovo. Tre muri e il gioco è finito.',
+               'Se il bambino si ferma, uno dei blocchi giusti inizia a pulsare come suggerimento.'], lang:'IT' }
+  };
+  var lang = (navigator.language||'en').toLowerCase().indexOf('it')===0 ? 'it' : 'en';
+  try{ var sv = localStorage.getItem('bbb-lang'); if(sv==='it'||sv==='en') lang = sv; }catch(e){}
+
+  var COLORS = ['red','blue','yellow','green','purple'];
+  var FACES = [
+    '<svg viewBox="0 0 40 40"><circle cx="14" cy="16" r="3" fill="#fff"/><circle cx="26" cy="16" r="3" fill="#fff"/><path d="M13 25q7 6 14 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+    '<svg viewBox="0 0 40 40"><path d="M10 15q4-4 8 0M22 15q4-4 8 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M13 25q7 6 14 0" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+    '<svg viewBox="0 0 40 40"><circle cx="14" cy="16" r="3" fill="#fff"/><circle cx="26" cy="16" r="3" fill="#fff"/><circle cx="20" cy="26" r="4" fill="#fff"/></svg>'
+  ];
+  // walls as rows of text: . empty, # block. Shapes: a wall, a heart, a smiling face.
+  var WALLS = [
+    ['######','######','######','######','######'],
+    ['.##.##.','#######','#######','.#####.','..###..','...#...'],
+    ['..####..','.######.','##.##.##','########','#.####.#','##....##','.######.','..####..']
+  ];
+  var MAX_STARS = 9; // 3 walls x 3 colours each
+
+  /* sound */
+  var actx=null, muted=false;
+  try{ muted = localStorage.getItem('bbb-muted')==='1'; }catch(e){}
+  function ensureAudio(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ actx=null; } } if(actx && actx.state==='suspended'){ actx.resume().catch(function(){}); } }
+  function tone(f,dur,type,vol,slide,when){ if(!actx||muted) return; try{ var t=actx.currentTime+(when||0), o=actx.createOscillator(), g=actx.createGain(); o.type=type||'sine'; o.frequency.setValueAtTime(f,t); if(slide) o.frequency.exponentialRampToValueAtTime(slide,t+dur); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+dur+0.05);}catch(e){} }
+  var combo=0;
+  var S={ pop:function(){ tone(440+combo*60,0.14,'sine',0.22,220); combo=Math.min(combo+1,8); },
+          nope:function(){ tone(220,0.18,'triangle',0.12,180); },
+          ding:function(){ tone(880,0.18,'triangle',0.18); tone(1318,0.3,'triangle',0.14,null,0.09); },
+          tada:function(){ [523,659,784,1046].forEach(function(f,i){ tone(f,0.35,'triangle',0.16,null,i*0.11); }); },
+          fanfare:function(){ [523,659,784,1046,784,1046,1318].forEach(function(f,i){ tone(f,0.3,'triangle',0.16,null,i*0.13); }); },
+          whoosh:function(){ tone(260,0.35,'sine',0.08,620); } };
+
+  var $=function(id){ return document.getElementById(id); };
+  var el={ wall:$('wall'), yard:$('yard'), stars:$('stars'), swatch:$('swatch'), ask:$('askText'), bubble:$('bubble'), start:$('start'), finish:$('finish'), help:$('help'), muteBtn:$('muteBtn'), langBtn:$('langBtn') };
+  var state={ wallIdx:0, grid:[], cols:0, rows:0, size:40, target:null, stars:0, started:false, busy:false };
+  var hintTimer=null;
+
+  for(var i=0;i<MAX_STARS;i++) el.stars.insertAdjacentHTML('beforeend','<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4 6.1 20.5l1.2-6.5L2.5 9.4l6.6-.9z"/></svg>');
+  $('heroWall').innerHTML = [0,1,2,3,4,5,6,7].map(function(i){ var c=COLORS[i%5]; return '<span style="--c:var(--'+c+');--cd:var(--'+c+'-dark)"></span>'; }).join('');
+
+  function applyLang(){
+    var t=T[lang]; document.documentElement.lang=lang;
+    $('titleText').textContent=t.title; $('subText').textContent=t.sub; $('playText').textContent=t.play; $('againText').textContent=t.again;
+    $('finishTitle').textContent=t.hooray; $('finishText').textContent=t.finish; $('helpTitle').textContent=t.helpTitle; $('helpClose').textContent=t.ok;
+    $('helpBody').innerHTML=t.help.map(function(s){ return '<p>'+s+'</p>'; }).join('');
+    el.langBtn.textContent=t.lang; el.langBtn.setAttribute('aria-label', lang==='en' ? 'Lingua: passa all’italiano' : 'Language: switch to English');
+    renderAsk(false);
+  }
+  function applyMute(){ el.muteBtn.setAttribute('aria-pressed', muted?'true':'false'); el.muteBtn.querySelector('.wave').style.display=muted?'none':''; el.muteBtn.querySelector('.x').style.display=muted?'':'none'; }
+
+  /* wall building */
+  function buildWall(idx){
+    var shape=WALLS[idx]; state.rows=shape.length; state.cols=shape[0].length; state.grid=[];
+    el.wall.innerHTML='';
+    // pick 3 colours for this wall and deal them so each colour appears
+    var pal=COLORS.slice().sort(function(){ return Math.random()-.5; }).slice(0,3);
+    var cells=[]; for(var r=0;r<state.rows;r++) for(var c=0;c<state.cols;c++) if(shape[r][c]==='#') cells.push([r,c]);
+    cells.sort(function(){ return Math.random()-.5; });
+    cells.forEach(function(rc,i){
+      var color=pal[i%3];
+      var b=document.createElement('button'); b.className='block'; b.dataset.color=color; b.dataset.r=rc[0]; b.dataset.c=rc[1];
+      b.style.setProperty('--c','var(--'+color+')'); b.style.setProperty('--cd','var(--'+color+'-dark)');
+      b.style.animationDelay=(i*0.025)+'s';
+      b.innerHTML=FACES[Math.floor(Math.random()*FACES.length)];
+      el.wall.appendChild(b); state.grid.push(b);
+    });
+    state.wallColors=pal.slice();
+    layout(); nextTarget(); S.whoosh();
+  }
+  function layout(){
+    var yw=el.yard.clientWidth-32, yh=el.yard.clientHeight*0.82;
+    var s=Math.floor(Math.min(yw/state.cols, yh/state.rows, 96));
+    state.size=s; var gap=Math.round(s*0.08); var cell=s+gap;
+    el.wall.style.width=(state.cols*cell-gap)+'px'; el.wall.style.height=(state.rows*cell-gap)+'px';
+    state.grid.forEach(function(b){
+      b.style.setProperty('--s',(s)+'px');
+      b.style.left=(b.dataset.c*cell)+'px'; b.style.top=(b.dataset.r*cell)+'px';
+      b.setAttribute('aria-label', T[lang].colors[b.dataset.color]);
+    });
+  }
+  function settle(){
+    // blocks fall straight down into empty spaces below them
+    var cell=state.size+Math.round(state.size*0.08);
+    for(var c=0;c<state.cols;c++){
+      var col=state.grid.filter(function(b){ return +b.dataset.c===c; }).sort(function(a,b){ return +b.dataset.r - +a.dataset.r; });
+      var r=state.rows-1;
+      col.forEach(function(b){ b.dataset.r=r; b.style.top=(r*cell)+'px'; r--; });
+    }
+  }
+  function nextTarget(){
+    var left={}; state.grid.forEach(function(b){ left[b.dataset.color]=(left[b.dataset.color]||0)+1; });
+    var options=Object.keys(left);
+    if(!options.length){ state.target=null; return; }
+    state.target = options.length===1 ? options[0] : options[Math.floor(Math.random()*options.length)];
+    renderAsk(true); armHint();
+  }
+  function renderAsk(pop){
+    var t=T[lang];
+    if(!state.target){ el.swatch.style.display='none'; el.ask.textContent=t.any; return; }
+    el.swatch.style.display=''; el.swatch.style.background='var(--'+state.target+')';
+    el.ask.textContent=t.ask.replace('{c}', t.colors[state.target]);
+    if(pop){ el.bubble.classList.remove('pop'); void el.bubble.offsetWidth; el.bubble.classList.add('pop'); }
+  }
+  function armHint(){
+    clearTimeout(hintTimer); state.grid.forEach(function(b){ b.classList.remove('hint'); });
+    hintTimer=setTimeout(function(){
+      if(!state.started||state.busy) return;
+      var cands=state.grid.filter(function(b){ return b.dataset.color===state.target; });
+      if(cands.length) cands[Math.floor(Math.random()*cands.length)].classList.add('hint');
+    },6000);
+  }
+
+  /* play */
+  function tapBlock(b){
+    if(state.busy || b.classList.contains('popping')) return;
+    ensureAudio();
+    if(b.dataset.color!==state.target){
+      b.classList.remove('nope'); void b.offsetWidth; b.classList.add('nope'); S.nope(); combo=0; armHint(); return;
+    }
+    burst(b); b.classList.add('popping'); S.pop();
+    state.grid=state.grid.filter(function(x){ return x!==b; });
+    setTimeout(function(){ b.remove(); }, 340);
+    settle();
+    var remaining=state.grid.filter(function(x){ return x.dataset.color===state.target; }).length;
+    if(remaining===0){
+      lightStar(); combo=0;
+      if(state.grid.length===0){ wallDone(); } else { S.ding(); cheer(); setTimeout(nextTarget, 500); }
+    } else armHint();
+  }
+  function lightStar(){ var s=el.stars.children[state.stars]; if(s) s.classList.add('on'); state.stars++; }
+  function cheer(){
+    var t=T[lang]; var d=document.createElement('div'); d.className='cheer'; d.textContent=t.cheers[Math.floor(Math.random()*t.cheers.length)];
+    el.yard.appendChild(d); setTimeout(function(){ d.remove(); },1400);
+  }
+  function wallDone(){
+    state.busy=true; clearTimeout(hintTimer); S.tada(); cheer();
+    state.wallIdx++;
+    setTimeout(function(){
+      if(state.wallIdx>=WALLS.length){ celebrate(); return; }
+      buildWall(state.wallIdx); state.busy=false;
+    },1500);
+  }
+  function burst(b){
+    var r=b.getBoundingClientRect(), yr=el.yard.getBoundingClientRect();
+    for(var i=0;i<10;i++){
+      var p=document.createElement('div'); p.className='bit'; p.style.background='var(--'+b.dataset.color+')';
+      p.style.left=(r.left-yr.left+r.width/2-6)+'px'; p.style.top=(r.top-yr.top+r.height/2-6)+'px';
+      var a=i/10*Math.PI*2, d=state.size*0.9+Math.random()*state.size*0.6;
+      p.style.setProperty('--bx',Math.round(Math.cos(a)*d)+'px'); p.style.setProperty('--by',Math.round(Math.sin(a)*d+state.size*0.4)+'px');
+      el.yard.appendChild(p); (function(n){ setTimeout(function(){ n.remove(); },800); })(p);
+    }
+  }
+  function startGame(){
+    state.wallIdx=0; state.stars=0; state.started=true; state.busy=false; combo=0;
+    Array.prototype.forEach.call(el.stars.children,function(s){ s.classList.remove('on'); });
+    Array.prototype.forEach.call(el.finish.querySelectorAll('.balloon'),function(b){ b.remove(); });
+    el.start.hidden=true; el.finish.hidden=true;
+    buildWall(0);
+  }
+  function celebrate(){
+    el.finish.hidden=false; state.started=false;
+    var colors=['#ff6b6b','#ffd23f','#6dd68a','#5aa9ff','#c08cff','#ff7eb6'];
+    for(var i=0;i<10;i++){ var b=document.createElement('div'); b.className='balloon'; b.style.left=(5+i*9.5)+'%'; b.style.background=colors[i%colors.length]; b.style.animationDuration=(7+(i%4)*1.5)+'s'; b.style.animationDelay=(-i*0.9)+'s'; el.finish.appendChild(b); }
+    S.fanfare();
+  }
+
+  el.wall.addEventListener('click', function(e){ var b=e.target.closest('.block'); if(b) tapBlock(b); });
+  $('playBtn').addEventListener('click', function(){ ensureAudio(); S.ding(); startGame(); });
+  $('againBtn').addEventListener('click', function(){ ensureAudio(); S.ding(); startGame(); });
+  $('helpBtn').addEventListener('click', function(){ el.help.hidden=false; });
+  $('helpClose').addEventListener('click', function(){ el.help.hidden=true; });
+  el.muteBtn.addEventListener('click', function(){ muted=!muted; try{ localStorage.setItem('bbb-muted',muted?'1':'0'); }catch(e){} applyMute(); ensureAudio(); if(!muted) S.pop(); });
+  el.langBtn.addEventListener('click', function(){ lang=lang==='en'?'it':'en'; try{ localStorage.setItem('bbb-lang',lang); }catch(e){} applyLang(); });
+  window.addEventListener('resize', function(){ if(state.grid.length) layout(); });
+  if(window.claude && window.claude.hot && window.claude.hot.snapshot){ try{ window.claude.hot.snapshot(function(){ return {lang:lang}; }); }catch(e){} }
+
+  applyMute();
+  // a wall already stands behind the start screen so the first frame is never empty
+  buildWall(0); state.target=null; applyLang();
+})();
+</script>
+</body>
+</html>

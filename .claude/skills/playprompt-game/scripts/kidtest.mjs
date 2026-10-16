@@ -62,7 +62,9 @@ async function rect(p, sel) { return p.evaluate(s => { const e = document.queryS
   const s = await state(p);
   check('wrong x12: not stuck busy', !s.busy, JSON.stringify(s));
   const said = await p.evaluate(() => window.__said.join(' / '));
-  check('wrong x12: no harsh words', !/wrong|bad|no!|lose|lost|fail/i.test(said), said.slice(0, 300));
+  check('no voice: game never speaks (pictures explain it)', !said, said.slice(0, 300));
+  const harsh = await p.evaluate(() => /wrong|lose|lost|fail|game over/i.test(document.querySelector('#stage').innerText));
+  check('wrong x12: no harsh words on screen', !harsh);
   check('wrong x12: still winnable', await finish(p));
   check('no errors', !p.errs.length, p.errs.slice(0, 3).join(' | '));
   await p.context().close();

@@ -50,6 +50,8 @@ button{font:inherit;color:inherit}
 @keyframes wobble{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
 @keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}
 .tray.locked .tt{pointer-events:none}
+.cue{animation:cue .55s ease-in-out 3}
+@keyframes cue{50%{transform:scale(1.14)}}
 
 /* hand pointer (hint + demo) */
 /* kid-proofing: input lock during demo, rotate prompt on upright phones */
@@ -182,7 +184,7 @@ button{font:inherit;color:inherit}
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
     </button>
     <div id="stars" role="img" aria-label="0 of 3 stars"></div>
-    <button class="btn" id="soundBtn" aria-label="Sound on. Grown-ups: press and hold to turn sound off">
+    <button class="btn" id="soundBtn" aria-label="Sounds on. Grown-ups: press and hold to turn sounds off">
       <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
     </button>
@@ -210,11 +212,10 @@ button{font:inherit;color:inherit}
         <span class="lbl">Counting · 1 to 5</span>
         <h1 class="display">Hedgehog's Orchard</h1>
         <div class="speak">
-          <button id="storyBtn" aria-label="Hear the story"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
           <p id="story">Hedgehog is picking apples for supper. Can you count how many are in the basket?</p>
         </div>
         <div class="steps">
-          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span><b>Listen to Hedgehog</b></div>
+          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="13" cy="10" r="7"/><circle cx="6" cy="19" r="2"/><path d="M11.5 8.5a1.6 1.6 0 1 1 2.2 1.5c-.6.3-.7.7-.7 1.3M13 13.6v.1"/></svg></span><b>Look at Hedgehog's bubble</b></div>
           <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 48 52" aria-hidden="true"><circle cx="24" cy="31" r="17"/><path d="M24 14c0-4 2-7 5-8"/></svg></span><b>Tap each apple to count</b></div>
           <div class="step"><span class="sn">3</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M10 9l2-1.5V16"/></svg></span><b>Tap the number</b></div>
         </div>
@@ -300,17 +301,8 @@ addEventListener('resize', fit); fit();
 function later(fn, ms) { const t = setTimeout(fn, ms); S.timers.push(t); return t; }
 function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; clearTimeout(S.hintTimer); }
 
-/* voice */
-function say(text) {
-  if (S.muted || !('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.9; u.pitch = 1.15; u.lang = 'en-US';
-  const v = speechSynthesis.getVoices().find(v => /en(-|_)(US|GB)/.test(v.lang) && /female|samantha|karen|serena|google us/i.test(v.name));
-  if (v) u.voice = v;
-  speechSynthesis.speak(u);
-}
-if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+/* no voice: games explain themselves with pictures, movement and short sound effects */
+function cue(el) { if (!el) return; el.classList.remove('cue'); void el.offsetWidth; el.classList.add('cue'); }
 
 /* sound effects */
 let AC;
@@ -362,12 +354,11 @@ function armHint() {
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
 
 function setDemo(on) { S.demo = on; $('#blocker').classList.toggle('on', on); }
-let lastWatch = 0;
-$('#blocker').addEventListener('pointerdown', () => { if (Date.now() - lastWatch > 4000) { lastWatch = Date.now(); say('Watch first. Your turn is next!'); } });
+// a tap during the demo makes the demo hand wiggle: "watch me first"
+$('#blocker').addEventListener('pointerdown', () => { hand.classList.add('nudge'); setTimeout(() => hand.classList.remove('nudge'), 900); });
 
 function goHome() {
   clearTimers(); handHide(); setDemo(false);
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
   S.stars = 0; drawStars(); show('home');
 }
 function startGame(demo) {
@@ -383,7 +374,7 @@ function roundDone() {
   else later(() => Game.newRound(), 1900);
 }
 function winGame() {
-  show('win'); sfx.win(); say(Game.winLine);
+  show('win'); sfx.win();
   for (let i = 0; i < 40; i++) {
     const c = document.createElement('span'); c.className = 'confetti';
     c.style.left = Math.random() * 1180 + 'px';
@@ -407,15 +398,13 @@ holdable($('#homeBtn'), goHome);
 function toggleMute() {
   S.muted = !S.muted;
   $('#soundBtn').classList.toggle('muted', S.muted);
-  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off. Press and hold to turn sound on' : 'Sound on. Grown-ups: press and hold to turn sound off');
-  if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sounds off. Press and hold to turn sounds on' : 'Sounds on. Grown-ups: press and hold to turn sounds off');
+  if (!S.muted) sfx.pop();
 }
-holdable($('#soundBtn'), toggleMute, () => { if ($('#home').classList.contains('on')) say($('#story').textContent); else if (!S.demo) Game.prompt(); });
-$('#storyBtn').addEventListener('click', () => say($('#story').textContent));
+holdable($('#soundBtn'), toggleMute, () => { if ($('#play').classList.contains('on') && !S.demo) Game.prompt(); else cue($('#soundBtn')); });
 $$('.lvl').forEach(b => b.addEventListener('click', () => {
   S.level = +b.dataset.level; sfx.pop(S.level);
   $$('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-  say(S.level ? 'Harder! Let’s go.' : 'Easy. Nice and gentle.');
 }));
 $('#playBtn').addEventListener('click', () => { sfx.pop(); startGame(false); });
 $('#demoBtn').addEventListener('click', () => { sfx.pop(); startGame(true); });
@@ -429,9 +418,8 @@ const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 
 const Game = {
   n: 0, counted: 0, options: [], last: 0,
-  winLine: 'Yummy, thank you! You counted all the apples!',
-
-  prompt() { say(this.counted ? `How many apples? Tap the number.` : `How many apples are in the basket?`); },
+  // the question is the bubble "apple ?"; asking again = pulse the bubble, then whatever to tap next
+  prompt() { cue($('#bubble')); later(() => cue(this.hintTarget()), 700); },
 
   newRound() {
     S.busy = false;
@@ -443,7 +431,7 @@ const Game = {
     else this.options = [1, 2, 3, 4, 5];
     $('#bubbleQ').textContent = '?'; $('#bubble').classList.remove('got');
     this.renderApples(); this.renderAnswers();
-    later(() => this.prompt(), 500 + this.n * 120);
+    later(() => cue($('#bubble')), 500 + this.n * 120);
     armHint();
   },
 
@@ -467,12 +455,12 @@ const Game = {
     }
   },
 
-  countApple(b, badge) {
-    if (S.busy && !S.demo) return;
-    if (b.classList.contains('counted')) { say(WORDS[+badge.textContent]); return; }
+  countApple(b, badge, force) {
+    if (S.busy && !S.demo && !force) return;
+    if (b.classList.contains('counted')) { cue(badge); return; }
     this.counted++;
     b.classList.add('counted'); badge.textContent = this.counted; badge.classList.add('on');
-    sfx.pop(this.counted); say(WORDS[this.counted]);
+    sfx.pop(this.counted);
     armHint();
   },
 
@@ -496,13 +484,11 @@ const Game = {
       $('#bubbleQ').textContent = k; $('#bubble').classList.add('got');
       this.revealCount();
       const hog = $('#hog'); hog.classList.remove('happy'); void hog.getBBox(); hog.classList.add('happy');
-      say(`Yes! ${WORDS[k]} ${k === 1 ? 'apple' : 'apples'}!`);
       clearTimeout(S.hintTimer);
       if (!S.demo) roundDone();
     } else {
       b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx.no();
       const hog = $('#hog'); hog.classList.remove('think'); void hog.getBBox(); hog.classList.add('think');
-      say(`Hmm, not ${WORDS[k]}. Let’s count together!`);
       S.busy = true;
       later(() => this.countTogether(() => { S.busy = false; armHint(); }), 1700);
     }
@@ -514,8 +500,8 @@ const Game = {
     $$('#apples .badge').forEach(bd => bd.classList.remove('on')); $$('#apples .apple').forEach(a => a.classList.remove('counted'));
     this.counted = 0;
     const apples = $$('#apples .apple'), badges = $$('#apples .badge');
-    apples.forEach((a, i) => later(() => { pointAt(a); handTap(); this.counted = i; this.countApple(a, badges[i]); }, i * 900));
-    later(() => { handHide(); say(`So, how many apples?`); done && done(); }, apples.length * 900 + 300);
+    apples.forEach((a, i) => later(() => { pointAt(a); handTap(); this.counted = i; this.countApple(a, badges[i], true); }, i * 900));
+    later(() => { handHide(); cue($('#bubble')); done && done(); }, apples.length * 900 + 300);
   },
 
   wrongTarget() { return $$('#answers .tt').find(b => +b.dataset.k !== this.n); },   // test helper
@@ -524,15 +510,14 @@ const Game = {
   hintTarget() { return this.counted >= this.n ? $(`#answers [data-k="${this.n}"]`) : $$('#apples .apple:not(.counted)')[0]; },
 
   demo(done) {
-    say('Watch me! I tap each apple and count.');
     const apples = $$('#apples .apple'), badges = $$('#apples .badge');
-    const t0 = 2600;
+    const t0 = 900;
     later(() => handTo(560, 700), 0);
     apples.forEach((a, i) => later(() => { pointAt(a); later(() => { handTap(); this.countApple(a, badges[i]); }, 650); }, t0 + i * 1400));
     const tEnd = t0 + apples.length * 1400 + 600;
-    later(() => { say(`${WORDS[this.n]} apples. So I tap the number ${WORDS[this.n]}!`); }, tEnd);
-    later(() => { const btn = $(`#answers [data-k="${this.n}"]`); pointAt(btn); later(() => { handTap(); this.answer(this.n, btn); }, 800); }, tEnd + 2600);
-    later(() => { say('Now it’s your turn!'); later(done, 1600); }, tEnd + 6000);
+    later(() => cue($(`#apples .badge:nth-of-type(${this.n})`)), tEnd);   // last count pulses: "that many"
+    later(() => { const btn = $(`#answers [data-k="${this.n}"]`); pointAt(btn); later(() => { handTap(); this.answer(this.n, btn); }, 800); }, tEnd + 1200);
+    later(() => { handHide(); later(done, 300); }, tEnd + 4200);
   },
 };
 </script>

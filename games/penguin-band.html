@@ -9,9 +9,9 @@
 <style>
 /* ===== Shared PlayPrompt shell: palette ===== */
 :root{
-  --ink:#2A2433; --paper:#FFFBF4; --tray:#F6EEE2; --teal:#2F6D6A; --sun:#E8B33B;
-  --clay:#D9774F; --plum:#6B4A6E; --muted:#4A5463; --line:#E4D9CC;
-  --scene:#F5D9CF;            /* per-game world background */
+  --ink:#3B2F4F; --paper:#FFF7E8; --tray:#F7E7CC; --teal:#1F7A7A; --sun:#F4B63F;
+  --clay:#EC6B3E; --plum:#7C4D8F; --muted:#5B4B70; --line:#EBD9BE;
+  --scene:#FAC9C0;            /* per-game world background */
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;overflow:hidden;background:var(--scene);touch-action:manipulation;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
@@ -45,11 +45,13 @@ button{font:inherit;color:inherit}
 .tt{width:100px;height:100px;border-radius:30px;border:3px solid var(--ink);background:var(--tray);box-shadow:0 4px 0 var(--ink);display:grid;place-items:center;padding:0;cursor:pointer;transition:transform .08s,outline-color .2s}
 .tt:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
 .sel{outline:5px solid var(--teal);outline-offset:5px}
-.tt.right{background:#CFE6D6;outline:5px solid var(--teal);outline-offset:5px;animation:bounce .5s}
+.tt.right{background:#CFEBD6;outline:5px solid var(--teal);outline-offset:5px;animation:bounce .5s}
 .tt.wrong{animation:wobble .45s}
 @keyframes wobble{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px) rotate(-4deg)}40%{transform:translateX(9px) rotate(3deg)}60%{transform:translateX(-6px)}80%{transform:translateX(4px)}}
 @keyframes bounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-16px)}}
 .tray.locked .tt{pointer-events:none}
+.cue{animation:cue .55s ease-in-out 3}
+@keyframes cue{50%{transform:scale(1.14)}}
 
 /* hand pointer (hint + demo) */
 /* kid-proofing: input lock during demo, rotate prompt on upright phones */
@@ -76,16 +78,16 @@ button{font:inherit;color:inherit}
 .home-copy h1{margin:0;font-size:52px;line-height:1.02}
 .speak{display:flex;align-items:center;gap:14px}
 .speak button{flex:none;width:56px;height:56px;border-radius:50%;border:3px solid var(--ink);background:var(--paper);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 3px 0 var(--ink)}
-.speak p{margin:0;font-size:21px;line-height:1.35;font-weight:700;color:#3A3346}
+.speak p{margin:0;font-size:21px;line-height:1.35;font-weight:700;color:#4A3C5E}
 .steps{display:flex;gap:14px}
 .step{flex:1;min-width:0;background:var(--paper);border:3px solid var(--ink);border-radius:24px;padding:14px 10px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative}
 .sn{position:absolute;left:10px;top:10px;width:28px;height:28px;border-radius:50%;background:var(--sun);border:2px solid var(--ink);display:grid;place-items:center;font-family:'Baloo 2',sans-serif;font-weight:800;font-size:15px}
 .gest{width:80px;height:80px;border-radius:50%;background:var(--tray);display:grid;place-items:center}
 .gest svg{width:46px;height:46px;fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
 .step b{font-size:15px;font-weight:800;text-align:center;line-height:1.2}
-.grownup{margin-top:auto;background:var(--paper);border:2px dashed #B9AC9C;border-radius:16px;padding:12px 18px;display:flex;flex-direction:column;gap:4px}
+.grownup{margin-top:auto;background:var(--paper);border:2px dashed #C9B08A;border-radius:16px;padding:12px 18px;display:flex;flex-direction:column;gap:4px}
 .grownup .row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-.grownup .row span:last-child{font-size:15px;font-weight:700;color:#3A3346}
+.grownup .row span:last-child{font-size:15px;font-weight:700;color:#4A3C5E}
 .grownup .tip{font-size:14px;color:var(--muted);font-weight:600}
 .home-tray{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);padding:0 60px;gap:0}
 .demo-btn{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:grid;place-items:center;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
@@ -94,7 +96,7 @@ button{font:inherit;color:inherit}
 @keyframes breathe{50%{transform:scale(1.06)}}
 .lvl{width:84px;height:84px;border-radius:24px;border:3px solid var(--ink);background:var(--tray);display:flex;align-items:center;justify-content:center;gap:6px;padding:0;cursor:pointer;box-shadow:0 4px 0 var(--ink)}
 .lvl span{width:16px;height:16px;border-radius:50%;background:var(--ink)}
-.lvl[aria-pressed="true"]{outline:5px solid var(--teal);outline-offset:5px;background:#CFE6D6}
+.lvl[aria-pressed="true"]{outline:5px solid var(--teal);outline-offset:5px;background:#CFEBD6}
 .side{display:flex;align-items:center;gap:12px}
 .side.r{justify-content:flex-end}
 .wave{transform-box:fill-box;transform-origin:50% 90%;animation:wave 2.2s ease-in-out infinite}
@@ -116,11 +118,17 @@ button{font:inherit;color:inherit}
 .confetti{position:absolute;width:14px;height:14px;border-radius:3px;border:2px solid var(--ink);top:-20px;animation:fall linear forwards;z-index:41}
 @keyframes fall{to{transform:translateY(880px) rotate(540deg)}}
 
+/* ===== Hand-drawn look (shared by all PlayPrompt games) ===== */
+.hero svg,#play>svg:first-of-type{filter:url(#rough)}
+#play>svg:not(:first-of-type),.win-card>svg{filter:url(#wob);overflow:visible}
+.btn,.tt,.lvl,.demo-btn,.play-btn,.speak button,#tune{filter:url(#wob)}   /* not on text-heavy cards: they must stay crisp */
+#grain{position:absolute;left:0;top:0;width:1180px;height:820px;pointer-events:none;z-index:60;opacity:.16;mix-blend-mode:multiply}
+
 /* ===== Game-specific: Penguin Band ===== */
 #tune{position:absolute;top:134px;height:140px;border-radius:40px;background:var(--paper);border:3px solid var(--ink);box-shadow:0 6px 0 var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 36px;z-index:4}
-.nt{flex:none;border-radius:50%;border:3px solid var(--ink);transition:transform .18s cubic-bezier(.3,1.6,.6,1),box-shadow .18s}
-.nt.lit{transform:translateY(-12px) scale(1.18);box-shadow:0 0 0 8px rgba(232,179,59,.45)}
-.nt.empty{border:4px dashed var(--teal);background:#EAF3F1}
+.nt{flex:none;border-radius:50%;border:3px solid var(--ink);display:grid;place-items:center;transition:transform .18s cubic-bezier(.3,1.6,.6,1),box-shadow .18s}
+.nt.lit{transform:translateY(-12px) scale(1.18);box-shadow:0 0 0 6px var(--paper),0 0 0 9px var(--ink)}
+.nt.empty{border:4px dashed var(--teal);background:#E3F2EE;font-family:'Baloo 2',sans-serif;font-weight:800;line-height:1;color:var(--plum)}
 .nt.empty.pulse{animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.12)}}
 .nt.filled{animation:fillpop .5s}
@@ -152,32 +160,35 @@ button{font:inherit;color:inherit}
 <!-- Reusable drawings -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <symbol id="star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke="#2A2433" stroke-width="1.6" stroke-linejoin="round"/></symbol>
-    <symbol id="handpt" viewBox="0 0 64 64"><path d="M26 34V12a5 5 0 0 1 10 0v16l12 3a6 6 0 0 1 4.5 7l-2.5 13a8 8 0 0 1-8 6.5H31a8 8 0 0 1-6.4-3.2L15 44a5 5 0 0 1 7-7z" fill="#FFFFFF" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/></symbol>
-    <symbol id="mnote" viewBox="0 0 40 50"><path d="M28 4 V36" stroke="#2A2433" stroke-width="4" stroke-linecap="round"/><path d="M28 4 Q 38 10 36 20" fill="none" stroke="#2A2433" stroke-width="4" stroke-linecap="round"/><ellipse cx="20" cy="38" rx="10" ry="8" fill="currentColor" stroke="#2A2433" stroke-width="2"/></symbol>
+    <filter id="rough" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.018" numOctaves="2" seed="4" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="7" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <filter id="wob" x="-8%" y="-8%" width="116%" height="116%"><feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 0.23  0 0 0 0 0.18  0 0 0 0 0.31  0 0 0 1.1 -0.25"/></filter>
+    <symbol id="star" viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z" stroke="#3B2F4F" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="handpt" viewBox="0 0 64 64"><path d="M26 34V12a5 5 0 0 1 10 0v16l12 3a6 6 0 0 1 4.5 7l-2.5 13a8 8 0 0 1-8 6.5H31a8 8 0 0 1-6.4-3.2L15 44a5 5 0 0 1 7-7z" fill="#FFFFFF" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/></symbol>
+    <symbol id="mnote" viewBox="0 0 40 50"><path d="M28 4 V36" stroke="#3B2F4F" stroke-width="4" stroke-linecap="round"/><path d="M28 4 Q 38 10 36 20" fill="none" stroke="#3B2F4F" stroke-width="4" stroke-linecap="round"/><ellipse cx="20" cy="38" rx="10" ry="8" fill="currentColor" stroke="#3B2F4F" stroke-width="3"/></symbol>
     <symbol id="penguin" viewBox="0 0 220 280" overflow="visible">
-      <ellipse cx="28" cy="150" rx="18" ry="54" fill="#2E3A55" stroke="#2A2433" stroke-width="3" stroke-linejoin="round" transform="rotate(20 28 150)"/>
-      <ellipse cx="196" cy="110" rx="18" ry="54" fill="#2E3A55" stroke="#2A2433" stroke-width="3" stroke-linejoin="round" transform="rotate(-48 196 110)"/>
-      <ellipse cx="84" cy="264" rx="24" ry="10" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-      <ellipse cx="136" cy="264" rx="24" ry="10" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-      <ellipse cx="110" cy="150" rx="86" ry="110" fill="#2E3A55" stroke="#2A2433" stroke-width="3"/>
-      <ellipse cx="110" cy="172" rx="58" ry="84" fill="#FFFBF4"/>
-      <circle cx="88" cy="92" r="6" fill="#2A2433"/><circle cx="132" cy="92" r="6" fill="#2A2433"/>
-      <circle cx="86" cy="90" r="2" fill="#FFFBF4"/><circle cx="130" cy="90" r="2" fill="#FFFBF4"/>
-      <path d="M96 110 Q 110 102 124 110 Q 110 136 96 110 Z" fill="#E8B33B" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M86 146 L110 156 L86 166 Z M134 146 L110 156 L134 166 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <circle cx="110" cy="156" r="6" fill="#C4623E" stroke="#2A2433" stroke-width="3"/>
-      <circle cx="74" cy="120" r="9" fill="#E98C8C"/><circle cx="146" cy="120" r="9" fill="#E98C8C"/>
+      <ellipse cx="28" cy="150" rx="18" ry="54" fill="#35456B" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round" transform="rotate(20 28 150)"/>
+      <ellipse cx="196" cy="110" rx="18" ry="54" fill="#35456B" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round" transform="rotate(-48 196 110)"/>
+      <ellipse cx="84" cy="264" rx="24" ry="10" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+      <ellipse cx="136" cy="264" rx="24" ry="10" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+      <ellipse cx="110" cy="150" rx="86" ry="110" fill="#35456B" stroke="#3B2F4F" stroke-width="3"/>
+      <ellipse cx="110" cy="172" rx="58" ry="84" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="3"/>
+      <circle cx="88" cy="92" r="6" fill="#3B2F4F"/><circle cx="132" cy="92" r="6" fill="#3B2F4F"/>
+      <circle cx="86" cy="90" r="2" fill="#FFF7E8"/><circle cx="130" cy="90" r="2" fill="#FFF7E8"/>
+      <path d="M96 110 Q 110 102 124 110 Q 110 136 96 110 Z" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M86 146 L110 156 L86 166 Z M134 146 L110 156 L134 166 Z" fill="#EC6B3E" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="110" cy="156" r="6" fill="#EC6B3E" stroke="#3B2F4F" stroke-width="3"/>
+      <circle cx="74" cy="120" r="9" fill="#F3A7A0"/><circle cx="146" cy="120" r="9" fill="#F3A7A0"/>
     </symbol>
     <symbol id="igloo" viewBox="0 0 280 164">
-      <path d="M10 160 A 130 130 0 0 1 270 160 Z" fill="#FFFBF4" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M30 110 H250 M60 64 H220 M110 30 H170 M90 64 V110 M150 64 V110 M210 64 V110 M130 30 V64 M60 110 V156 M200 110 V156" fill="none" stroke="#E4D9CC" stroke-width="4"/>
-      <path d="M100 160 V126 A 40 40 0 0 1 180 126 V160 Z" fill="#2F6D6A" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M10 160 A 130 130 0 0 1 270 160 Z" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M30 110 H250 M60 64 H220 M110 30 H170 M90 64 V110 M150 64 V110 M210 64 V110 M130 30 V64 M60 110 V156 M200 110 V156" fill="none" stroke="#C9DDEB" stroke-width="4"/>
+      <path d="M100 160 V126 A 40 40 0 0 1 180 126 V160 Z" fill="#1F7A7A" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
     </symbol>
   </defs>
 </svg>
 
-<div id="rotate" role="alert" aria-label="Please turn the device sideways"><svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="#2A2433" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="6" width="28" height="52" rx="6" fill="#FFFBF4"/><path d="M28 50h8"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" style="width:64px;height:64px;animation:none" fill="none" stroke="#2F6D6A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
+<div id="rotate" role="alert" aria-label="Please turn the device sideways"><svg viewBox="0 0 64 64" aria-hidden="true" fill="none" stroke="#3B2F4F" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><rect x="18" y="6" width="28" height="52" rx="6" fill="#FFF7E8"/><path d="M28 50h8"/></svg><svg viewBox="0 0 24 24" aria-hidden="true" style="width:64px;height:64px;animation:none" fill="none" stroke="#1F7A7A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></div>
 
 <div id="stage">
 
@@ -188,7 +199,7 @@ button{font:inherit;color:inherit}
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg>
     </button>
     <div id="stars" role="img" aria-label="0 of 3 stars"></div>
-    <button class="btn" id="soundBtn" aria-label="Sound on. Grown-ups: press and hold to turn sound off">
+    <button class="btn" id="soundBtn" aria-label="Sounds on. Grown-ups: press and hold to turn sounds off">
       <svg class="ring" viewBox="0 0 84 84" aria-hidden="true"><circle cx="42" cy="42" r="39"/></svg>
       <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path class="wave" style="animation:none" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="wave" style="animation:none" d="M19 6a8.5 8.5 0 0 1 0 12"/><path class="slash" d="M16 9l6 6M22 9l-6 6"/></svg>
     </button>
@@ -199,19 +210,19 @@ button{font:inherit;color:inherit}
     <div class="home-main">
       <div class="hero">
         <svg viewBox="0 0 480 514" aria-hidden="true">
-          <rect width="480" height="514" fill="#F5D9CF"/>
-          <circle cx="396" cy="92" r="46" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-          <path d="M-30 350 C 110 240 300 240 420 350 Z" fill="#FFF8F0" stroke="#2A2433" stroke-width="3"/>
-          <path d="M210 370 C 340 280 460 280 520 370 Z" fill="#F4EDE6" stroke="#2A2433" stroke-width="3"/>
-          <path d="M-10 368 Q 240 344 490 368 V520 H-10 Z" fill="#DCE7EE" stroke="#2A2433" stroke-width="3"/>
-          <ellipse cx="150" cy="448" rx="130" ry="22" fill="#C7D7E2" stroke="#2A2433" stroke-width="3"/>
+          <rect width="480" height="514" fill="#FAC9C0"/>
+          <circle cx="396" cy="92" r="46" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+          <path d="M-30 350 C 110 240 300 240 420 350 Z" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="3"/>
+          <path d="M210 370 C 340 280 460 280 520 370 Z" fill="#E3EEF6" stroke="#3B2F4F" stroke-width="3"/>
+          <path d="M-10 368 Q 240 344 490 368 V520 H-10 Z" fill="#C9DDEB" stroke="#3B2F4F" stroke-width="3"/>
+          <ellipse cx="150" cy="448" rx="130" ry="22" fill="#E3EEF6" stroke="#3B2F4F" stroke-width="3"/>
           <use href="#igloo" x="250" y="250" width="220" height="129"/>
-          <circle cx="60" cy="70" r="5" fill="#FFFBF4" stroke="#2A2433" stroke-width="2"/><circle cx="230" cy="50" r="5" fill="#FFFBF4" stroke="#2A2433" stroke-width="2"/><circle cx="440" cy="220" r="5" fill="#FFFBF4" stroke="#2A2433" stroke-width="2"/><circle cx="30" cy="250" r="5" fill="#FFFBF4" stroke="#2A2433" stroke-width="2"/>
+          <circle cx="60" cy="70" r="5" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="2"/><circle cx="230" cy="50" r="5" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="2"/><circle cx="440" cy="220" r="5" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="2"/><circle cx="30" cy="250" r="5" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="2"/>
           <g class="floaty">
-            <use href="#mnote" x="210" y="120" width="44" height="55" style="color:#E8B33B"/>
-            <use href="#mnote" x="270" y="70" width="36" height="45" style="color:#6B4A6E"/>
-            <use href="#mnote" x="320" y="160" width="32" height="40" style="color:#7FA6C4"/>
-            <use href="#mnote" x="150" y="80" width="30" height="38" style="color:#D9774F"/>
+            <use href="#mnote" x="210" y="120" width="44" height="55" style="color:#F4B63F"/>
+            <use href="#mnote" x="270" y="70" width="36" height="45" style="color:#7C4D8F"/>
+            <use href="#mnote" x="320" y="160" width="32" height="40" style="color:#7EB8E0"/>
+            <use href="#mnote" x="150" y="80" width="30" height="38" style="color:#EC6B3E"/>
           </g>
           <use href="#penguin" class="wave" x="50" y="190" width="200" height="255"/>
         </svg>
@@ -220,17 +231,16 @@ button{font:inherit;color:inherit}
         <span class="lbl">Patterns · Music</span>
         <h1 class="display">Penguin Band</h1>
         <div class="speak">
-          <button id="storyBtn" aria-label="Hear the story"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:26px;height:26px"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></svg></button>
-          <p id="story">Penguin is practising a song for the snow band. Listen to the tune, then play the note that comes next!</p>
+          <p id="story">Penguin is practising a song for the snow band. Can you play the note that comes next?</p>
         </div>
         <div class="steps">
-          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9.5h3l4-3.5v12l-4-3.5H5z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></span><b>Listen to Penguin’s tune</b></div>
-          <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="4" height="16" rx="1.5"/><rect x="10" y="6" width="4" height="12" rx="1.5"/><rect x="17" y="8" width="4" height="8" rx="1.5"/></svg></span><b>Tap the next note</b></div>
+          <div class="step"><span class="sn">1</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></span><b>Look at Penguin’s tune</b></div>
+          <div class="step"><span class="sn">2</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="4" height="16" rx="1.5"/><rect x="10" y="6" width="4" height="12" rx="1.5"/><rect x="17" y="8" width="4" height="8" rx="1.5"/></svg></span><b>Tap the bar for the empty spot</b></div>
           <div class="step"><span class="sn">3</span><span class="gest"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.9-4.8 4.6 1.2 6.5L12 17.4l-5.9 3.1 1.2-6.5L2.5 9.4l6.6-.9z"/></svg></span><b>Penguin dances, you win a star</b></div>
         </div>
         <div class="grownup">
           <div class="row"><span class="lbl" style="font-size:11px">Grown-up</span><span>Spotting and continuing repeating patterns · about 3 min · 5 rounds</span></div>
-          <span class="tip">Sing or clap the tune together — “yellow, purple, yellow, purple…” — and pause at the gap so your child fills it in.</span>
+          <span class="tip">Clap or hum the colours together — “yellow, purple, yellow, purple…” — and pause at the gap so your child fills it in.</span>
         </div>
       </div>
     </div>
@@ -239,7 +249,7 @@ button{font:inherit;color:inherit}
         <button class="demo-btn" id="demoBtn" aria-label="Show me how"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" style="width:40px;height:40px"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M10 9.5v5l4.5-2.5z"/></svg></button>
         <span class="lbl" style="font-size:12px">Show me how</span>
       </div>
-      <button class="play-btn" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:52px;height:52px;margin-left:6px"><path d="M7 4.5l13 7.5-13 7.5z" fill="#FFFBF4" stroke="#2A2433" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
+      <button class="play-btn" id="playBtn" aria-label="Play"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:52px;height:52px;margin-left:6px"><path d="M7 4.5l13 7.5-13 7.5z" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="1.2" stroke-linejoin="round"/></svg></button>
       <div class="side r">
         <span class="lbl" style="font-size:12px;text-align:right">Level</span>
         <button class="lvl" data-level="0" aria-pressed="true" aria-label="Easy level"><span></span></button>
@@ -251,37 +261,37 @@ button{font:inherit;color:inherit}
   <!-- ===== PLAY ===== -->
   <section id="play" class="screen" aria-label="Game">
     <svg viewBox="0 0 1180 820" aria-hidden="true" style="position:absolute;left:0;top:0;width:1180px;height:820px">
-      <circle cx="990" cy="470" r="92" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-      <path d="M-40 560 C 200 370 520 370 760 560 Z" fill="#FFF8F0" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M480 590 C 760 420 1060 420 1240 590 Z" fill="#F4EDE6" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <path d="M-10 590 Q 590 556 1190 590 V830 H-10 Z" fill="#DCE7EE" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-      <ellipse cx="280" cy="604" rx="190" ry="30" fill="#C7D7E2" stroke="#2A2433" stroke-width="3"/>
+      <circle cx="990" cy="470" r="92" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+      <path d="M-40 560 C 200 370 520 370 760 560 Z" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M480 590 C 760 420 1060 420 1240 590 Z" fill="#E3EEF6" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M-10 590 Q 590 556 1190 590 V830 H-10 Z" fill="#C9DDEB" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+      <ellipse cx="280" cy="604" rx="190" ry="30" fill="#E3EEF6" stroke="#3B2F4F" stroke-width="3"/>
       <use href="#igloo" x="830" y="444" width="280" height="164"/>
     </svg>
     <span class="fl" style="left:120px;top:160px"></span><span class="fl" style="left:330px;top:330px"></span><span class="fl" style="left:1080px;top:330px"></span><span class="fl" style="left:700px;top:380px"></span>
     <div id="tune" role="img" aria-label="Tune"></div>
     <span id="pointer"></span>
-    <svg class="floaty" viewBox="0 0 40 50" aria-hidden="true" style="position:absolute;left:380px;top:330px;width:40px;height:50px"><use href="#mnote" style="color:#2A2433"/></svg>
-    <svg class="floaty" viewBox="0 0 40 50" aria-hidden="true" style="position:absolute;left:440px;top:400px;width:30px;height:37.5px;opacity:.7;animation-delay:-1.4s"><use href="#mnote" style="color:#2A2433"/></svg>
+    <span style="position:absolute;left:392px;top:292px;width:24px;height:24px;border-radius:50%;background:#FFF7E8;border:3px solid #3B2F4F;z-index:4"></span>
+    <span style="position:absolute;left:360px;top:326px;width:14px;height:14px;border-radius:50%;background:#FFF7E8;border:3px solid #3B2F4F;z-index:4"></span>
     <svg id="peng" viewBox="0 0 220 280" role="img" aria-label="Penguin singing">
       <g class="pbody" id="pbody">
-        <ellipse cx="28" cy="150" rx="18" ry="54" fill="#2E3A55" stroke="#2A2433" stroke-width="3" stroke-linejoin="round" transform="rotate(20 28 150)"/>
-        <ellipse cx="196" cy="110" rx="18" ry="54" fill="#2E3A55" stroke="#2A2433" stroke-width="3" stroke-linejoin="round" transform="rotate(-48 196 110)"/>
-        <ellipse cx="84" cy="264" rx="24" ry="10" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-        <ellipse cx="136" cy="264" rx="24" ry="10" fill="#E8B33B" stroke="#2A2433" stroke-width="3"/>
-        <ellipse cx="110" cy="150" rx="86" ry="110" fill="#2E3A55" stroke="#2A2433" stroke-width="3"/>
-        <ellipse cx="110" cy="172" rx="58" ry="84" fill="#FFFBF4"/>
-        <circle cx="88" cy="92" r="6" fill="#2A2433"/><circle cx="132" cy="92" r="6" fill="#2A2433"/>
-        <circle cx="86" cy="90" r="2" fill="#FFFBF4"/><circle cx="130" cy="90" r="2" fill="#FFFBF4"/>
-        <path class="beakc" d="M96 110 Q 110 102 124 110 Q 110 136 96 110 Z" fill="#E8B33B" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+        <ellipse cx="28" cy="150" rx="18" ry="54" fill="#35456B" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round" transform="rotate(20 28 150)"/>
+        <ellipse cx="196" cy="110" rx="18" ry="54" fill="#35456B" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round" transform="rotate(-48 196 110)"/>
+        <ellipse cx="84" cy="264" rx="24" ry="10" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+        <ellipse cx="136" cy="264" rx="24" ry="10" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3"/>
+        <ellipse cx="110" cy="150" rx="86" ry="110" fill="#35456B" stroke="#3B2F4F" stroke-width="3"/>
+        <ellipse cx="110" cy="172" rx="58" ry="84" fill="#FFF7E8" stroke="#3B2F4F" stroke-width="3"/>
+        <circle cx="88" cy="92" r="6" fill="#3B2F4F"/><circle cx="132" cy="92" r="6" fill="#3B2F4F"/>
+        <circle cx="86" cy="90" r="2" fill="#FFF7E8"/><circle cx="130" cy="90" r="2" fill="#FFF7E8"/>
+        <path class="beakc" d="M96 110 Q 110 102 124 110 Q 110 136 96 110 Z" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
         <g class="beako">
-          <ellipse cx="110" cy="116" rx="11" ry="8" fill="#8A3B2B" stroke="#2A2433" stroke-width="3"/>
-          <path d="M95 106 Q 110 96 125 106 Q 110 114 95 106 Z" fill="#E8B33B" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-          <path d="M98 120 Q 110 116 122 120 Q 110 138 98 120 Z" fill="#E8B33B" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
+          <ellipse cx="110" cy="116" rx="11" ry="8" fill="#8A3B4B" stroke="#3B2F4F" stroke-width="3"/>
+          <path d="M95 106 Q 110 96 125 106 Q 110 114 95 106 Z" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+          <path d="M98 120 Q 110 116 122 120 Q 110 138 98 120 Z" fill="#F4B63F" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
         </g>
-        <path d="M86 146 L110 156 L86 166 Z M134 146 L110 156 L134 166 Z" fill="#D9774F" stroke="#2A2433" stroke-width="3" stroke-linejoin="round"/>
-        <circle cx="110" cy="156" r="6" fill="#C4623E" stroke="#2A2433" stroke-width="3"/>
-        <circle cx="74" cy="120" r="9" fill="#E98C8C"/><circle cx="146" cy="120" r="9" fill="#E98C8C"/>
+        <path d="M86 146 L110 156 L86 166 Z M134 146 L110 156 L134 166 Z" fill="#EC6B3E" stroke="#3B2F4F" stroke-width="3" stroke-linejoin="round"/>
+        <circle cx="110" cy="156" r="6" fill="#EC6B3E" stroke="#3B2F4F" stroke-width="3"/>
+        <circle cx="74" cy="120" r="9" fill="#F3A7A0"/><circle cx="146" cy="120" r="9" fill="#F3A7A0"/>
       </g>
     </svg>
     <div class="tray" id="bars" aria-label="Xylophone"></div>
@@ -290,17 +300,18 @@ button{font:inherit;color:inherit}
   <!-- ===== WIN ===== -->
   <section id="win" class="screen" aria-label="Well done">
     <div class="win-card">
-      <div class="win-stars" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#E8B33B"/></svg></div>
+      <div class="win-stars" aria-hidden="true"><svg viewBox="0 0 24 24"><use href="#star" fill="#F4B63F"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#F4B63F"/></svg><svg viewBox="0 0 24 24"><use href="#star" fill="#F4B63F"/></svg></div>
       <h2 class="display">What a band!</h2>
-      <p style="margin:0;font-size:22px;font-weight:700;color:#3A3346">You found every next note. Penguin’s band is ready for the big snow show.</p>
+      <p style="margin:0;font-size:22px;font-weight:700;color:#4A3C5E">You found every next note. Penguin’s band is ready for the big snow show.</p>
       <svg viewBox="0 0 220 280" aria-hidden="true" style="width:120px;height:153px;overflow:visible"><use class="pbody dance" href="#penguin" width="220" height="280"/></svg>
       <div class="win-row">
         <button class="btn" id="winHome" aria-label="Back to start"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/></svg></button>
-        <button class="play-btn" id="againBtn" aria-label="Play again" style="margin-top:0;width:104px;height:104px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:46px;height:46px;fill:none;stroke:#FFFBF4;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
+        <button class="play-btn" id="againBtn" aria-label="Play again" style="margin-top:0;width:104px;height:104px"><svg viewBox="0 0 24 24" aria-hidden="true" style="width:46px;height:46px;fill:none;stroke:#FFF7E8;stroke-width:3;stroke-linecap:round;stroke-linejoin:round"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg></button>
       </div>
     </div>
   </section>
 
+  <svg id="grain" viewBox="0 0 1180 820" aria-hidden="true"><rect width="1180" height="820" fill="#000" filter="url(#grain)"/></svg>
   <div id="blocker" aria-hidden="true"></div>
   <div id="hand" aria-hidden="true"><svg viewBox="0 0 64 64" width="76" height="76"><use href="#handpt"/></svg></div>
 </div>
@@ -322,17 +333,8 @@ addEventListener('resize', fit); fit();
 function later(fn, ms) { const t = setTimeout(fn, ms); S.timers.push(t); return t; }
 function clearTimers() { S.timers.forEach(clearTimeout); S.timers = []; clearTimeout(S.hintTimer); }
 
-/* voice */
-function say(text) {
-  if (S.muted || !('speechSynthesis' in window)) return;
-  speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.rate = 0.9; u.pitch = 1.15; u.lang = 'en-US';
-  const v = speechSynthesis.getVoices().find(v => /en(-|_)(US|GB)/.test(v.lang) && /female|samantha|karen|serena|google us/i.test(v.name));
-  if (v) u.voice = v;
-  speechSynthesis.speak(u);
-}
-if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = () => {};
+/* no voice: games explain themselves with pictures, movement and short sound effects */
+function cue(el) { if (!el) return; el.classList.remove('cue'); void el.offsetWidth; el.classList.add('cue'); }
 
 /* sound effects */
 let AC;
@@ -356,7 +358,7 @@ const sfx = {
 /* stars */
 function drawStars() {
   $('#stars').innerHTML = [0, 1, 2].map(i =>
-    `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#star" fill="${i < S.stars ? '#E8B33B' : '#FFFBF4'}"/></svg>`).join('');
+    `<svg viewBox="0 0 24 24" aria-hidden="true"><use href="#star" fill="${i < S.stars ? '#F4B63F' : '#FFF7E8'}"/></svg>`).join('');
   $('#stars').setAttribute('aria-label', `${S.stars} of 3 stars`);
 }
 function earnRound() {
@@ -384,12 +386,11 @@ function armHint() {
 function show(id) { $$('.screen').forEach(s => s.classList.toggle('on', s.id === id || (id === 'win' && s.id === 'play'))); $('#homeBtn').classList.toggle('hidden', id === 'home'); }
 
 function setDemo(on) { S.demo = on; $('#blocker').classList.toggle('on', on); }
-let lastWatch = 0;
-$('#blocker').addEventListener('pointerdown', () => { if (Date.now() - lastWatch > 4000) { lastWatch = Date.now(); say('Watch first. Your turn is next!'); } });
+// a tap during the demo makes the demo hand wiggle: "watch me first"
+$('#blocker').addEventListener('pointerdown', () => { hand.classList.add('nudge'); setTimeout(() => hand.classList.remove('nudge'), 900); });
 
 function goHome() {
   clearTimers(); handHide(); setDemo(false);
-  if ('speechSynthesis' in window) speechSynthesis.cancel();
   S.stars = 0; drawStars(); show('home');
 }
 function startGame(demo) {
@@ -405,11 +406,11 @@ function roundDone() {
   else later(() => Game.newRound(), 1900);
 }
 function winGame() {
-  show('win'); sfx.win(); say(Game.winLine);
+  show('win'); sfx.win();
   for (let i = 0; i < 40; i++) {
     const c = document.createElement('span'); c.className = 'confetti';
     c.style.left = Math.random() * 1180 + 'px';
-    c.style.background = ['#E8B33B', '#D9774F', '#6E9773', '#6B4A6E', '#7FA6C4'][i % 5];
+    c.style.background = ['#F4B63F', '#EC6B3E', '#5E9461', '#7C4D8F', '#7EB8E0'][i % 5];
     c.style.animationDuration = 1.8 + Math.random() * 1.6 + 's';
     c.style.animationDelay = Math.random() * .6 + 's';
     stage.appendChild(c); setTimeout(() => c.remove(), 4200);
@@ -429,15 +430,13 @@ holdable($('#homeBtn'), goHome);
 function toggleMute() {
   S.muted = !S.muted;
   $('#soundBtn').classList.toggle('muted', S.muted);
-  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sound off. Press and hold to turn sound on' : 'Sound on. Grown-ups: press and hold to turn sound off');
-  if (S.muted && 'speechSynthesis' in window) speechSynthesis.cancel(); else say('Sound on!');
+  $('#soundBtn').setAttribute('aria-label', S.muted ? 'Sounds off. Press and hold to turn sounds on' : 'Sounds on. Grown-ups: press and hold to turn sounds off');
+  if (!S.muted) sfx.pop();
 }
-holdable($('#soundBtn'), toggleMute, () => { if ($('#home').classList.contains('on')) say($('#story').textContent); else if (!S.demo) Game.prompt(); });
-$('#storyBtn').addEventListener('click', () => say($('#story').textContent));
+holdable($('#soundBtn'), toggleMute, () => { if ($('#play').classList.contains('on') && !S.demo) Game.prompt(); else cue($('#soundBtn')); });
 $$('.lvl').forEach(b => b.addEventListener('click', () => {
   S.level = +b.dataset.level; sfx.pop(S.level);
   $$('.lvl').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
-  say(S.level ? 'Harder! Let’s go.' : 'Easy. Nice and gentle.');
 }));
 $('#playBtn').addEventListener('click', () => { sfx.pop(); startGame(false); });
 $('#demoBtn').addEventListener('click', () => { sfx.pop(); startGame(true); });
@@ -446,12 +445,12 @@ $('#winHome').addEventListener('click', goHome);
 drawStars();
 
 /* ================= Game: Penguin Band ================= */
-// one note per colour: low (big, yellow) -> high (small, terracotta)
+// one note per colour: low (big, yellow) -> high (small, orange); size also differs so colour is never the only clue
 const NOTES = [
-  { name: 'yellow', col: '#E8B33B', f: 261.63, size: 84, h: 120, label: 'Yellow, low note' },
-  { name: 'purple', col: '#6B4A6E', f: 329.63, size: 72, h: 104, label: 'Plum note' },
-  { name: 'blue',   col: '#7FA6C4', f: 392.00, size: 64, h: 88,  label: 'Blue note' },
-  { name: 'orange', col: '#D9774F', f: 523.25, size: 56, h: 72,  label: 'Terracotta, high note' },
+  { name: 'yellow', col: '#F4B63F', f: 261.63, size: 84, h: 120, label: 'Yellow, low note' },
+  { name: 'purple', col: '#7C4D8F', f: 329.63, size: 72, h: 104, label: 'Purple note' },
+  { name: 'blue',   col: '#7EB8E0', f: 392.00, size: 64, h: 88,  label: 'Blue note' },
+  { name: 'orange', col: '#EC6B3E', f: 523.25, size: 56, h: 72,  label: 'Orange, high note' },
 ];
 const rand = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
 const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rand(0, i); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -462,16 +461,17 @@ function playNote(i, v = .17) {               // xylophone-ish: triangle + soft 
 }
 
 const Game = {
-  seq: [], ans: 0, bars: [], wrongs: 0, done: false, singT: [], last: '',
-  winLine: 'Bravo! You played the whole song with Penguin!',
+  seq: [], unit: [], shown: 4, ans: 0, bars: [], wrongs: 0, done: false, singT: [], playT: [], last: '', playEnd: 0, quick: false,
 
+  // the question is the tune board with an empty "?" spot: asking again = Penguin sings it (each note lights up), then the spot pulses
   prompt() {
-    if (this.done || S.demo || (S.busy && !this.done)) return;
-    this.sing(560, () => { say('What comes next?'); $('#tune .empty') && $('#tune .empty').classList.add('pulse'); });
+    if (this.done || S.demo || S.busy) return;
+    this.sing(560, () => this.ask());
   },
+  ask() { const e = $('#tune .empty'); if (e) e.classList.add('pulse'); },
 
   newRound() {
-    // shell asks for the next round 1.9 s after roundDone(); let the victory tune finish first
+    // the shell asks for the next round 1.9 s after roundDone(); let Penguin's victory tune finish first
     if (S.round > 0 && !S.demo && this.done && Date.now() < this.playEnd) { later(() => this.newRound(), this.playEnd - Date.now()); return; }
     S.busy = false; this.done = false; this.wrongs = 0;
     this.stopSing(); this.stopPlayback();
@@ -489,7 +489,7 @@ const Game = {
     this.last = key;
     this.seq = Array.from({ length: this.shown }, (_, i) => this.unit[i % this.unit.length]);
     this.ans = this.unit[this.shown % this.unit.length];
-    // tray: easy = the two pattern notes + one distractor; harder = all four
+    // bars: easy = the two pattern notes + one distractor; harder = all four
     let ids = [...new Set(this.unit)];
     if (!S.level) ids.push(shuffle([0, 1, 2, 3].filter(i => !ids.includes(i)))[0]);
     else ids = [0, 1, 2, 3];
@@ -497,9 +497,11 @@ const Game = {
     const pb = $('#pbody'); pb.classList.remove('dance', 'think', 'bop');
     $('#peng').classList.remove('sing');
     this.renderTune(); this.renderBars();
-    if (!S.demo) later(() => { if (!this.done && !S.demo) { say('Listen to Penguin’s tune!'); later(() => this.prompt(), 1500); } }, 300);
+    if (!S.demo) later(() => this.prompt(), 500);
     armHint();
   },
+
+  slotSize() { return Math.round(84 * (this.shown > 4 ? .88 : 1)); },
 
   renderTune() {
     const t = $('#tune'), big = this.shown > 4, k = big ? .88 : 1, w = big ? 740 : 640;
@@ -510,12 +512,12 @@ const Game = {
       const s = Math.round(NOTES[i].size * k); n.style.width = n.style.height = s + 'px'; n.style.background = NOTES[i].col;
       t.appendChild(n);
     });
-    const e = document.createElement('span'); e.className = 'nt empty';
-    e.style.width = e.style.height = Math.round(84 * k) + 'px';
+    const e = document.createElement('span'); e.className = 'nt empty'; e.textContent = '?';
+    e.style.width = e.style.height = this.slotSize() + 'px'; e.style.fontSize = Math.round(this.slotSize() * .62) + 'px';
     t.appendChild(e);
     t.setAttribute('aria-label', 'Tune: ' + this.seq.map(i => NOTES[i].name).join(', ') + ', then an empty space');
     const p = $('#pointer'); p.classList.remove('off');
-    p.style.left = (1060 - 39 - Math.round(84 * k) / 2 - 10) + 'px';
+    p.style.left = (1060 - 39 - this.slotSize() / 2 - 10) + 'px';
   },
 
   renderBars() {
@@ -542,7 +544,7 @@ const Game = {
     $('#play').appendChild(el); setTimeout(() => el.remove(), 1700);
   },
 
-  // penguin sings one note: light the circle, open beak, float a note
+  // Penguin sings one note: light the circle, open the beak, float a note, nudge the matching bar
   singNote(idx, i, gap, el) {
     const notes = $$('#tune .nt');
     const c = el || notes[idx];
@@ -565,12 +567,11 @@ const Game = {
     this.singT.forEach(clearTimeout); this.singT = [];
     $$('#tune .nt.lit').forEach(n => n.classList.remove('lit')); $('#peng').classList.remove('sing');
   },
-  stopPlayback() { (this.playT || []).forEach(clearTimeout); this.playT = []; },
+  stopPlayback() { this.playT.forEach(clearTimeout); this.playT = []; },
 
   tapBar(i, b, fromDemo) {
     if (S.demo && !fromDemo) { playNote(i); this.hitBar(b); return; }   // child taps along during the demo: just music
-    if (this.done) { playNote(i); this.hitBar(b); return; }              // round solved: hammering just plays notes
-    if (S.busy) { playNote(i); this.hitBar(b); return; }                  // penguin is replaying slowly: listen first
+    if (this.done || S.busy) { playNote(i); this.hitBar(b); return; }     // round solved, or Penguin is replaying slowly: just music
     this.answer(i, b);
   },
 
@@ -580,20 +581,20 @@ const Game = {
       this.done = true; S.busy = true; clearTimeout(S.hintTimer);
       this.stopSing(); $('#bars').classList.add('locked');
       playNote(i); b.classList.add('right');
+      // the "?" becomes the answer note
       const e = $('#tune .empty');
-      e.classList.remove('empty', 'pulse'); e.classList.add('filled');
-      const s = Math.round(NOTES[i].size * (this.shown > 4 ? .88 : 1));
-      e.style.width = e.style.height = s + 'px'; e.style.background = NOTES[i].col;
+      e.classList.remove('empty', 'pulse'); e.classList.add('filled'); e.textContent = '';
+      e.style.fontSize = ''; e.style.background = NOTES[i].col;
+      e.style.width = e.style.height = Math.round(NOTES[i].size * (this.shown > 4 ? .88 : 1)) + 'px';
       $('#pointer').classList.add('off');
       this.stopPlayback();
       const last = !S.demo && S.round + 1 >= S.rounds;
-      if (last) {                                   // final round: dance straight into the win fanfare
-        say(`Yes! ${NOTES[i].name}!`); sfx.yes(); $('#pbody').classList.add('dance');
+      if (last || this.quick) {                     // final round: dance straight into the win fanfare
+        sfx.yes(); $('#pbody').classList.add('dance');
         this.playEnd = 0;
       } else {
-        say(`Yes! ${NOTES[i].name}! Let’s play the whole song!`);
-        // penguin plays the whole tune back and dances (newRound waits for it via playEnd)
-        const full = $$('#tune .nt'), all = [...this.seq, i], gap = 400, t0 = 1300;
+        // Penguin plays the whole tune back and dances (newRound waits for it via playEnd)
+        const full = $$('#tune .nt'), all = [...this.seq, i], gap = 400, t0 = 1000;
         this.playT.push(later(() => $('#pbody').classList.add('dance'), t0 - 200));
         all.forEach((n, k) => this.playT.push(later(() => this.singNote(k, n, gap, full[k]), t0 + k * gap)));
         const tEnd = t0 + all.length * gap + 200;
@@ -605,20 +606,19 @@ const Game = {
       this.wrongs++;
       playNote(i); b.classList.remove('wrong'); void b.offsetWidth; b.classList.add('wrong'); sfx.no();
       const pb = $('#pbody'); pb.classList.remove('think', 'bop'); void pb.getBBox(); pb.classList.add('think');
-      say(this.wrongs > 1 ? 'Nice try! Listen once more, slowly.' : 'Ooh, nice try! Let’s listen again, slowly.');
       S.busy = true; this.stopSing(); clearTimeout(S.hintTimer);
-      this.singT.push(later(() => this.sing(820, () => {
-        S.busy = false;
-        say(`What comes next?`);
-        $('#tune .empty') && $('#tune .empty').classList.add('pulse');
+      // show the method: Penguin sings the tune again, slowly, one note lit at a time
+      this.singT.push(later(() => this.sing(780, () => {
+        S.busy = false; this.ask();
         if (this.wrongs >= 2) { const c = this.barEl(this.ans); if (c) { pointAt(c); hand.classList.add('nudge'); } }
         armHint();
-      }), 2200));
+      }), 900));
     }
   },
 
   autoSolve() {                                   // test helper
     if (this.done || S.demo) return;
+    this.quick = true;                            // skip the long victory replay so tests move fast
     S.busy = false; this.stopSing();
     this.tapBar(this.ans, this.barEl(this.ans), false);
   },
@@ -627,15 +627,21 @@ const Game = {
   hintTarget() { return this.barEl(this.ans); },
 
   demo(done) {
+    this.quick = false;
     this.stopSing();
-    say('Watch me! Penguin sings a tune. Listen!');
+    later(() => handTo(560, 700), 0);
+    // 1. Penguin sings the tune, each note lights up
     later(() => this.sing(650, () => {
-      say(`${this.seq.map(i => NOTES[i].name).join(', ')}… what comes next? ${NOTES[this.ans].name}!`);
+      // 2. the empty spot pulses, the hand points at it ("this one is missing")
+      this.ask();
+      const slot = $('#tune .empty'); pointAt(slot);
+      // 3. the hand moves to the matching bar and taps it
       const btn = this.barEl(this.ans);
-      later(() => handTo(620, 790), 300);
-      later(() => { pointAt(btn); later(() => { handTap(); this.tapBar(this.ans, btn, true); }, 800); }, 1800 + this.seq.length * 500);
-      later(() => { handHide(); later(() => { say('Now it’s your turn!'); later(done, 1800); }, 4200); }, 3000 + this.seq.length * 500);
-    }), 2200);
+      later(() => { pointAt(btn); }, 1500);
+      later(() => { handTap(); this.tapBar(this.ans, btn, true); }, 2400);
+      // 4. Penguin plays the whole song and dances, then the real game starts
+      later(() => { handHide(); later(done, 300); }, 2400 + 1000 + (this.seq.length + 1) * 400 + 900);
+    }), 300);
   },
 };
 </script>
